@@ -23,6 +23,45 @@ import pandas as pd
 from rich import inspect
 
 # %%
+inspect("ruff")
+
+# %%
+complexity_values = {
+    "Low": 0,
+    "Moderate": 1,
+    "High": 2,
+    "Very High": 4,
+}
+
+
+def get_spirits_by_expansions(expansions: int) -> pd.DataFrame:
+    spirits = pd.read_csv("data/spirits.tsv", delimiter="\t")
+    spirits = spirits[(expansions | spirits.Expansions) == expansions]
+    spirits.Aspect = spirits.Aspect.fillna("")
+    agg = (
+        spirits.groupby("Name")
+        .agg(Aspects=("Aspect", "count"))
+        .reset_index()
+        .set_index("Name")
+    )
+    # inspect(agg)
+
+    spirits = spirits.join(agg, on="Name")
+    spirits.Aspect = spirits.apply(
+        lambda r: "Base" if r.Aspect == "" and r.Aspects > 1 else r.Aspect, axis=1
+    )
+    spirits = spirits.drop(["Expansions", "Aspects"], axis=1)
+
+    spirits.Complexity = spirits.apply(
+        lambda r: complexity_values[r.Complexity], axis=1
+    )
+    return spirits
+
+
+spirits = get_spirits_by_expansions(47)
+# inspect(spirits)
+
+# %%
 difficulty_values = {
     "Top": -1,
     "Counters": -1,
@@ -32,32 +71,20 @@ difficulty_values = {
     "Bottom": 2,
     "Unfavored": 2,
 }
-complexity_values = {
-    "Low": 0,
-    "Moderate": 1,
-    "High": 2,
-    "Very High": 4,
-}
 
 
-def generate_spirits(count: int, expansions: int, matchup: str) -> pd.DataFrame:
-    spirits = pd.read_csv("data/spirits.tsv", delimiter="\t", dtype={"Aspect": str})
-    spirits = spirits[
-        ((expansions | spirits.Expansions) == expansions)
-        & (spirits[matchup] != "Unplayable")
-    ]
-    spirits.Aspect = spirits.Aspect.fillna("")
+def calculate_matchups(
+    expansions: int, matchup: str, spirits: pd.DataFrame
+) -> pd.DataFrame:
+    spirits = spirits[(spirits[matchup] != "Unplayable")]
 
     spirits = spirits.assign(
         Difficulty=spirits.apply(lambda row: difficulty_values[row[matchup]], axis=1),
-        Complexity=spirits.apply(
-            lambda row: complexity_values[row.PrintedComplexity], axis=1
-        ),
     )[["Name", "Difficulty", "Aspect", "Complexity"]]
 
     agg = (
         spirits.groupby("Name")
-        .agg({"Difficulty": "min", "Complexity": "max", "Aspect": "count"})
+        .agg({"Difficulty": "min", "Complexity": "max"})
         .reset_index()
         .set_index("Name")
     )
@@ -66,30 +93,15 @@ def generate_spirits(count: int, expansions: int, matchup: str) -> pd.DataFrame:
     spirits = spirits.join(agg, on="Name", rsuffix="_agg")
     spirits = (
         spirits[spirits.Difficulty == spirits.Difficulty_agg]
-        .assign(
-            Aspect=spirits.apply(
-                lambda row: row.Aspect
-                if row.Aspect != ""
-                else "Base"
-                if row.Aspect_agg > 1
-                else "",
-                axis=1,
-            ),
-        )
-        .drop(["Complexity", "Difficulty_agg", "Aspect_agg"], axis=1)
+        .drop(["Complexity", "Difficulty_agg"], axis=1)
         .rename(columns={"Complexity_agg": "Complexity"})
     )
-
-    return spirits
-    # NaN -> Base if multiple aspects)
-    # Drop extra columns
-    # Group by Name, Difficulty -> [Aspects], Max(Complexity)
     # Create Name + ([Aspect] Recommended)
 
+    return spirits
 
-# %%
-inspect(generate_spirits(1, 47, "Sweden"))
 
-# %%
+matchups = calculate_matchups(0, "Sweden", spirits)
+# inspect(matchups)
 
 # %%
