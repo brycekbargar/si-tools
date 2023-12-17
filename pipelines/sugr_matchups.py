@@ -72,9 +72,7 @@ difficulty_values = {
 }
 
 
-def calculate_matchups(
-    expansions: int, matchup: str, spirits: pd.DataFrame
-) -> pd.DataFrame:
+def calculate_matchups(matchup: str, spirits: pd.DataFrame) -> pd.DataFrame:
     matchups = spirits[(spirits[matchup] != "Unplayable")]
 
     matchups = matchups.assign(
@@ -113,7 +111,7 @@ def calculate_matchups(
     return matchups
 
 
-matchups = calculate_matchups(0, "Sweden", spirits)
+matchups = calculate_matchups("Sweden", spirits)
 # inspect(matchups)
 # matchups.dtypes
 
