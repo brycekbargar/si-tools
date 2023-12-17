@@ -1,0 +1,9 @@
+[tool.ruff]
+target-version = "py311"
+fixable = ["ALL"]
+
+[tool.pyright]
+typeCheckingMode = "basic"
+
+[tool.jupytext]
+formats = "ipynb,py:percent"
