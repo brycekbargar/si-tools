@@ -12,18 +12,17 @@
 #     name: python3
 # ---
 
-# %% [markdown]
-# #
-
 # %%
 # %conda install prefect pandas --yes
 
 # %%
 import pandas as pd
-from rich import inspect
+from rich import inspect, print
+from itertools import combinations
 
 # %%
 inspect("ruff")
+print(pd.__version__)
 
 # %%
 complexity_values = {
@@ -76,32 +75,74 @@ difficulty_values = {
 def calculate_matchups(
     expansions: int, matchup: str, spirits: pd.DataFrame
 ) -> pd.DataFrame:
-    spirits = spirits[(spirits[matchup] != "Unplayable")]
+    matchups = spirits[(spirits[matchup] != "Unplayable")]
 
-    spirits = spirits.assign(
-        Difficulty=spirits.apply(lambda row: difficulty_values[row[matchup]], axis=1),
+    matchups = matchups.assign(
+        Difficulty=matchups.apply(lambda row: difficulty_values[row[matchup]], axis=1),
     )[["Name", "Difficulty", "Aspect", "Complexity"]]
 
     agg = (
-        spirits.groupby("Name")
+        matchups.groupby("Name")
         .agg({"Difficulty": "min", "Complexity": "max"})
         .reset_index()
         .set_index("Name")
     )
     # inspect(agg)
 
-    spirits = spirits.join(agg, on="Name", rsuffix="_agg")
-    spirits = (
-        spirits[spirits.Difficulty == spirits.Difficulty_agg]
+    matchups = matchups.join(agg, on="Name", rsuffix="_agg")
+    matchups = (
+        matchups[matchups.Difficulty == matchups.Difficulty_agg]
         .drop(["Complexity", "Difficulty_agg"], axis=1)
         .rename(columns={"Complexity_agg": "Complexity"})
     )
-    # Create Name + ([Aspect] Recommended)
 
-    return spirits
+    matchups = (
+        matchups.groupby(["Name", "Difficulty", "Complexity"])
+        .agg(Aspects=("Aspect", lambda g: [a for a in g if a != ""]))
+        .reset_index()
+    )
+    matchups = matchups.assign(
+        Spirit=matchups.apply(
+            lambda r: r.Name
+            + ("" if len(r.Aspects) == 0 else f" ({', '.join(r.Aspects)})"),
+            axis=1,
+        )
+    )[["Spirit", "Difficulty", "Complexity"]]
+    matchups.Spirit = matchups.Spirit.astype(pd.StringDtype())
+
+    return matchups
 
 
 matchups = calculate_matchups(0, "Sweden", spirits)
 # inspect(matchups)
+# matchups.dtypes
+
+
+# %%
+def _spirit_labels(count: int) -> list[tuple[str, str]]:
+    return combinations(["Spirit"] + [f"Spirit_{s+1}" for s in range(count)], 2)
+
+
+def gen_spirit_combinations(count: int, spirits: pd.DataFrame) -> pd.DataFrame:
+    combos = spirits[["Difficulty", "Complexity", "Spirit"]]
+    for i in range(1, count):
+        combos = combos.merge(spirits, how="cross", suffixes=(None, f"_{i}"))
+        combos = combos.assign(
+            Difficulty=combos.apply(
+                lambda r: r.Difficulty + r[f"Difficulty_{i}"], axis=1
+            ),
+            Complexity=combos.apply(
+                lambda r: r.Complexity + r[f"Complexity_{i}"], axis=1
+            ),
+        ).drop([f"Difficulty_{i}", f"Complexity_{i}"], axis=1)
+        for p in _spirit_labels(i):
+            combos = combos[combos[p[0]] != combos[p[1]]]
+
+    combos = combos.rename(columns={"Spirit": "Spirit_0"})
+    return combos
+
+
+combos = gen_spirit_combinations(2, matchups)
+# inspect(combos)
 
 # %%
