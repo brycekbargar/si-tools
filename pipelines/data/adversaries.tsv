@@ -1,0 +1,56 @@
+Name	Level	Expansion	Matchup	Difficulty	Complexity
+The Kingdom of Brandenburg-Prussia	0	1	Tier	1	1
+The Kingdom of Brandenburg-Prussia	1	1	Tier	2	1
+The Kingdom of Brandenburg-Prussia	2	1	Tier	4	2
+The Kingdom of Brandenburg-Prussia	3	1	Tier	6	2
+The Kingdom of Brandenburg-Prussia	4	1	Tier	7	2
+The Kingdom of Brandenburg-Prussia	5	1	Prussia	9	2
+The Kingdom of Brandenburg-Prussia	6	1	Prussia	10	3
+The Kingdom of England	0	1	Tier	1	1
+The Kingdom of England	1	1	Tier	3	2
+The Kingdom of England	2	1	Tier	4	2
+The Kingdom of England	3	1	Tier	6	3
+The Kingdom of England	4	1	England	7	3
+The Kingdom of England	5	1	England	9	4
+The Kingdom of England	6	1	England	11	5
+The Kingdom of Sweden	0	1	Tier	1	1
+The Kingdom of Sweden	1	1	Tier	2	2
+The Kingdom of Sweden	2	1	Tier	3	2
+The Kingdom of Sweden	3	1	Sweden	5	3
+The Kingdom of Sweden	4	1	Sweden	7	3
+The Kingdom of Sweden	5	1	Sweden	8	4
+The Kingdom of Sweden	6	1	Sweden	9	4
+The Kingdom of France (Plantation Colony)	0	4	Tier	2	1
+The Kingdom of France (Plantation Colony)	2	4	France	4	3
+The Kingdom of France (Plantation Colony)	3	4	France	5	3
+The Kingdom of France (Plantation Colony)	4	4	France	6	4
+The Kingdom of France (Plantation Colony)	5	4	France	7	5
+The Kingdom of France (Plantation Colony)	6	4	France	8	6
+Habsburg Monarchy (Livestock Colony)	0	16	Tier	2	1
+Habsburg Monarchy (Livestock Colony)	1	16	Tier	3	2
+Habsburg Monarchy (Livestock Colony)	2	16	Tier	5	3
+Habsburg Monarchy (Livestock Colony)	3	16	Tier	6	3
+Habsburg Monarchy (Livestock Colony)	4	16	Livestock	8	4
+Habsburg Monarchy (Livestock Colony)	5	16	Livestock	9	4
+Habsburg Monarchy (Livestock Colony)	6	16	Livestock	10	5
+The Tsardom of Russia	0	16	Tier	1	1
+The Tsardom of Russia	1	16	Russia	3	2
+The Tsardom of Russia	2	16	Russia	4	3
+The Tsardom of Russia	3	16	Russia	6	4
+The Tsardom of Russia	4	16	Russia	8	4
+The Tsardom of Russia	5	16	Russia	10	5
+The Tsardom of Russia	6	16	Russia	11	6
+The Kingdom of Scotland	0	8	Tier	1	1
+The Kingdom of Scotland	1	8	Tier	3	2
+The Kingdom of Scotland	2	8	Scotland	4	2
+The Kingdom of Scotland	3	8	Scotland	6	3
+The Kingdom of Scotland	4	8	Scotland	7	3
+The Kingdom of Scotland	5	8	Scotland	8	4
+The Kingdom of Scotland	6	8	Scotland	10	5
+Habsburg Mining Expedition	0	32	Tier	1	1
+Habsburg Mining Expedition	1	32	Tier	3	2
+Habsburg Mining Expedition	2	32	Tier	4	2
+Habsburg Mining Expedition	3	32	Mines	5	3
+Habsburg Mining Expedition	4	32	Mines	7	4
+Habsburg Mining Expedition	5	32	Mines	9	4
+Habsburg Mining Expedition	6	32	Mines	10	5

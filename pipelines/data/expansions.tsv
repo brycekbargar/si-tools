@@ -1,0 +1,29 @@
+Bitfield	Value	Players	Expansions
+000001	1	4	Base
+000010	2	3	Horizons
+000011	3	4	Base, Horizons
+000101	5	4	Base, Branch and Claw
+000110	6	3	Horizons, Branch and Claw
+000111	7	4	Base, Horizons, Branch and Claw
+001001	9	4	Base, Feather and Flame
+001010	10	3	Horizons, Feather and Flame
+001011	11	4	Base, Horizons, Feather and Flame
+001101	13	4	Base, Branch and Claw, Feather and Flame
+001110	14	3	Horizons, Branch and Claw, Feather and Flame
+001111	15	4	Base, Horizons, Branch and Claw, Feather and Flame
+010001	17	6	Base, Jagged Earth
+010011	19	6	Base, Horizons, Jagged Earth
+010101	21	6	Base, Branch and Claw, Jagged Earth
+010111	23	6	Base, Horizons, Branch and Claw, Jagged Earth
+011001	25	6	Base, Feather and Flame, Jagged Earth
+011011	27	6	Base, Horizons, Feather and Flame, Jagged Earth
+011101	29	6	Base, Branch and Claw, Feather and Flame, Jagged Earth
+011111	31	6	Base, Horizons, Branch and Claw, Feather and Flame, Jagged Earth
+110001	49	6	Base, Jagged Earth, Nature Incarnate
+110011	51	6	Base, Horizons, Jagged Earth, Nature Incarnate
+110101	53	6	Base, Branch and Claw, Jagged Earth, Nature Incarnate
+110111	55	6	Base, Horizons, Branch and Claw, Jagged Earth, Nature Incarnate
+111001	57	6	Base, Feather and Flame, Jagged Earth, Nature Incarnate
+111011	59	6	Base, Horizons, Feather and Flame, Jagged Earth, Nature Incarnate
+111101	61	6	Base, Branch and Claw, Feather and Flame, Jagged Earth, Nature Incarnate
+111111	63	6	Base, Horizons, Branch and Claw, Feather and Flame, Jagged Earth, Nature Incarnate
