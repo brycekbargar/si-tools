@@ -13,52 +13,70 @@
 # ---
 
 # %%
-# %conda install prefect pandas --yes
+# %conda install polars pandas --yes
 
 # %%
-import pandas as pd
-from rich import inspect, print
 from itertools import combinations
 
+import pandas as pd
+
+if hasattr(__builtins__, "__IPYTHON__"):
+    import polars as pl
+    from rich import inspect, print
+
+    inspect("ruff/isort strip out rich")
+    print("unless it is used")
+
+
 # %%
-inspect("ruff")
-print(pd.__version__)
+def spirits_by_expansions(expansions: int) -> pl.LazyFrame:
+    """Load, filter, and clean Spirit data from disk."""
+    import polars as pl
 
-# %%
-complexity_values = {
-    "Low": 0,
-    "Moderate": 1,
-    "High": 2,
-    "Very High": 4,
-}
-
-
-def get_spirits_by_expansions(expansions: int) -> pd.DataFrame:
-    spirits = pd.read_csv("data/spirits.tsv", delimiter="\t")
-    spirits = spirits[(expansions | spirits.Expansions) == expansions]
-    spirits.Aspect = spirits.Aspect.fillna("")
-    agg = (
-        spirits.groupby("Name")
-        .agg(Aspects=("Aspect", "count"))
-        .reset_index()
-        .set_index("Name")
+    # Filter to just the given expansions.
+    # Expansions is a bitfield, this is assuming that a superset of the expansions for a spirit are required.
+    spirits = (
+        pl.scan_csv("data/spirits.tsv", separator="\t")
+        .filter(pl.col("Expansions").or_(expansions).eq(expansions))
+        .drop("Expansions")
     )
-    # inspect(agg)
 
-    spirits = spirits.join(agg, on="Name")
-    spirits.Aspect = spirits.apply(
-        lambda r: "Base" if r.Aspect == "" and r.Aspects > 1 else r.Aspect, axis=1
+    # Cleanup the Aspect column.
+    # We only care to label spirits as the "Base" version when aspects are available.
+    spirits = (
+        spirits.join(spirits.group_by("Name").count(), on="Name", how="left")
+        .with_columns(
+            pl.when(pl.col("Aspect").is_not_null())
+            .then(pl.col("Aspect"))
+            .when(pl.col("count").gt(1))
+            .then(pl.lit("Base"))
+            .otherwise(pl.lit(""))
+            .alias("Aspect")
+        )
+        .drop("count")
     )
-    spirits = spirits.drop(["Expansions", "Aspects"], axis=1)
 
-    spirits.Complexity = spirits.apply(
-        lambda r: complexity_values[r.Complexity], axis=1
+    # Convert Complexity from text to numeric.
+    spirits = (
+        spirits.join(
+            pl.LazyFrame(
+                {
+                    "Complexity": ["Low", "Moderate", "High", "Very High"],
+                    "Value": [0, 1, 2, 4],
+                }
+            ),
+            on="Complexity",
+            how="left",
+        )
+        .with_columns(pl.col("Value").alias("Complexity"))
+        .drop("Value")
     )
+
     return spirits
 
 
-spirits = get_spirits_by_expansions(47)
-# inspect(spirits)
+# %%
+spirits_by_expansions(63).collect()
 
 # %%
 difficulty_values = {
@@ -111,7 +129,7 @@ def calculate_matchups(matchup: str, spirits: pd.DataFrame) -> pd.DataFrame:
     return matchups
 
 
-matchups = calculate_matchups("Sweden", spirits)
+# matchups = calculate_matchups("Sweden", spirits)
 # inspect(matchups)
 # matchups.dtypes
 
@@ -140,7 +158,7 @@ def gen_spirit_combinations(count: int, spirits: pd.DataFrame) -> pd.DataFrame:
     return combos
 
 
-combos = gen_spirit_combinations(2, matchups)
+# combos = gen_spirit_combinations(2, matchups)
 # inspect(combos)
 
 # %%
