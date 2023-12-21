@@ -13,13 +13,9 @@
 # ---
 
 # %%
-# %conda install polars pandas --yes
+# %conda install polars --yes
 
 # %%
-from itertools import combinations
-
-import pandas as pd
-
 if hasattr(__builtins__, "__IPYTHON__"):
     import polars as pl
     from rich import inspect, print
@@ -74,7 +70,10 @@ def spirits_by_expansions(expansions: int, spirits: pl.LazyFrame) -> pl.LazyFram
 
 
 # %%
-all_spirits = spirits_by_expansions(63, pl.scan_csv("data/spirits.tsv", separator="\t"))
+if hasattr(__builtins__, "__IPYTHON__"):
+    all_spirits = spirits_by_expansions(
+        63, pl.scan_csv("data/spirits.tsv", separator="\t")
+    )
 
 
 # %%
@@ -142,34 +141,43 @@ def calculate_matchups(matchup: str, spirits: pl.LazyFrame) -> pl.LazyFrame:
 
 
 # %%
-matchups = calculate_matchups("England", all_spirits)
+if hasattr(__builtins__, "__IPYTHON__"):
+    matchups = calculate_matchups("Sweden", all_spirits)
 
 
 # %%
-def _spirit_labels(count: int) -> list[tuple[str, str]]:
-    return combinations(["Spirit"] + [f"Spirit_{s+1}" for s in range(count)], 2)
+def generate_combinations(count: int, matchups: pl.DataFrame) -> pl.DataFrame:
+    """Generate all possible combinations of spirits."""
+    import polars as pl
 
+    def _unique_spirits(sc: int) -> pl.Expr:
+        col = pl.col(f"Spirit_{sc}")
+        expr = pl.lit(1).eq(pl.lit(1))
+        for i in range(sc - 1, -1, -1):
+            expr = expr.and_(pl.Expr.not_(col.eq(pl.col(f"Spirit_{i}"))))
+        return expr
 
-def gen_spirit_combinations(count: int, spirits: pd.DataFrame) -> pd.DataFrame:
-    combos = spirits[["Difficulty", "Complexity", "Spirit"]]
+    combos = matchups.clone().rename({"Spirit": "Spirit_0"})
+    matchups = matchups.drop("Matchup")
     for i in range(1, count):
-        combos = combos.merge(spirits, how="cross", suffixes=(None, f"_{i}"))
-        combos = combos.assign(
-            Difficulty=combos.apply(
-                lambda r: r.Difficulty + r[f"Difficulty_{i}"], axis=1
-            ),
-            Complexity=combos.apply(
-                lambda r: r.Complexity + r[f"Complexity_{i}"], axis=1
-            ),
-        ).drop([f"Difficulty_{i}", f"Complexity_{i}"], axis=1)
-        for p in _spirit_labels(i):
-            combos = combos[combos[p[0]] != combos[p[1]]]
+        combos = (
+            combos.join(matchups, how="cross")
+            .with_columns(
+                [
+                    pl.col("Difficulty").add(pl.col("Difficulty_right")),
+                    pl.col("Complexity").add(pl.col("Complexity_right")),
+                ]
+            )
+            .drop("Difficulty_right", "Complexity_right")
+            .rename({"Spirit": f"Spirit_{i}"})
+            .filter(_unique_spirits(i))
+        )
 
-    combos = combos.rename(columns={"Spirit": "Spirit_0"})
     return combos
 
 
-# combos = gen_spirit_combinations(2, matchups)
-# inspect(combos)
+# %%
+if hasattr(__builtins__, "__IPYTHON__"):
+    generate_combinations(1, matchups).collect()
 
 # %%
