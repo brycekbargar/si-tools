@@ -72,7 +72,7 @@ def spirits_by_expansions(expansions: int, spirits: pl.LazyFrame) -> pl.LazyFram
 # %%
 if hasattr(__builtins__, "__IPYTHON__"):
     all_spirits = spirits_by_expansions(
-        63, pl.scan_csv("data/spirits.tsv", separator="\t")
+        63, pl.scan_csv("../data/spirits.tsv", separator="\t")
     )
 
 
@@ -151,10 +151,11 @@ def generate_combinations(count: int, matchups: pl.DataFrame) -> pl.DataFrame:
     import polars as pl
 
     def _unique_spirits(sc: int) -> pl.Expr:
-        col = pl.col(f"Spirit_{sc}")
+        """Check the latest cross-joined spirit column against all the previous ones."""
+        spirit_n = pl.col(f"Spirit_{sc}")
         expr = pl.lit(1).eq(pl.lit(1))
         for i in range(sc - 1, -1, -1):
-            expr = expr.and_(pl.Expr.not_(col.eq(pl.col(f"Spirit_{i}"))))
+            expr = expr.and_(pl.Expr.not_(spirit_n.eq(pl.col(f"Spirit_{i}"))))
         return expr
 
     combos = matchups.clone().rename({"Spirit": "Spirit_0"})
@@ -178,6 +179,6 @@ def generate_combinations(count: int, matchups: pl.DataFrame) -> pl.DataFrame:
 
 # %%
 if hasattr(__builtins__, "__IPYTHON__"):
-    generate_combinations(1, matchups).collect()
+    print(generate_combinations(2, matchups).collect())
 
 # %%
