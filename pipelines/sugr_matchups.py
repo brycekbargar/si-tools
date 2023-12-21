@@ -29,16 +29,14 @@ if hasattr(__builtins__, "__IPYTHON__"):
 
 
 # %%
-def spirits_by_expansions(expansions: int) -> pl.LazyFrame:
-    """Load, filter, and clean Spirit data from disk."""
+def spirits_by_expansions(expansions: int, spirits: pl.LazyFrame) -> pl.LazyFrame:
+    """Filter, and clean Spirit data."""
     import polars as pl
 
     # Filter to just the given expansions.
     # Expansions is a bitfield, this is assuming that a superset of the expansions for a spirit are required.
-    spirits = (
-        pl.scan_csv("data/spirits.tsv", separator="\t")
-        .filter(pl.col("Expansions").or_(expansions).eq(expansions))
-        .drop("Expansions")
+    spirits = spirits.filter(pl.col("Expansions").or_(expansions).eq(expansions)).drop(
+        "Expansions"
     )
 
     # Cleanup the Aspect column.
@@ -50,7 +48,7 @@ def spirits_by_expansions(expansions: int) -> pl.LazyFrame:
             .then(pl.col("Aspect"))
             .when(pl.col("count").gt(1))
             .then(pl.lit("Base"))
-            .otherwise(pl.lit(""))
+            .otherwise(None)
             .alias("Aspect")
         )
         .drop("count")
@@ -76,62 +74,75 @@ def spirits_by_expansions(expansions: int) -> pl.LazyFrame:
 
 
 # %%
-spirits_by_expansions(63).collect()
+all_spirits = spirits_by_expansions(63, pl.scan_csv("data/spirits.tsv", separator="\t"))
+
 
 # %%
-difficulty_values = {
-    "Top": -1,
-    "Counters": -1,
-    "Mid+": 0,
-    "Neutral": 0,
-    "Mid-": 1,
-    "Bottom": 2,
-    "Unfavored": 2,
-}
+def calculate_matchups(matchup: str, spirits: pl.LazyFrame) -> pl.LazyFrame:
+    """Calculate the difficulty modifiers and best spirits for the matchup."""
+    import polars as pl
 
-
-def calculate_matchups(matchup: str, spirits: pd.DataFrame) -> pd.DataFrame:
-    matchups = spirits[(spirits[matchup] != "Unplayable")]
-
-    matchups = matchups.assign(
-        Difficulty=matchups.apply(lambda row: difficulty_values[row[matchup]], axis=1),
-    )[["Name", "Difficulty", "Aspect", "Complexity"]]
-
-    agg = (
-        matchups.groupby("Name")
-        .agg({"Difficulty": "min", "Complexity": "max"})
-        .reset_index()
-        .set_index("Name")
-    )
-    # inspect(agg)
-
-    matchups = matchups.join(agg, on="Name", rsuffix="_agg")
+    # Convert matchhup from text to numeric difficulty.
     matchups = (
-        matchups[matchups.Difficulty == matchups.Difficulty_agg]
-        .drop(["Complexity", "Difficulty_agg"], axis=1)
-        .rename(columns={"Complexity_agg": "Complexity"})
-    )
-
-    matchups = (
-        matchups.groupby(["Name", "Difficulty", "Complexity"])
-        .agg(Aspects=("Aspect", lambda g: [a for a in g if a != ""]))
-        .reset_index()
-    )
-    matchups = matchups.assign(
-        Spirit=matchups.apply(
-            lambda r: r.Name
-            + ("" if len(r.Aspects) == 0 else f" ({', '.join(r.Aspects)})"),
-            axis=1,
+        spirits.filter(pl.Expr.not_(pl.col(matchup).eq(pl.lit("Unplayable"))))
+        .join(
+            pl.LazyFrame(
+                {
+                    matchup: [
+                        "Top",
+                        "Counters",
+                        "Mid+",
+                        "Neutral",
+                        "Mid-",
+                        "Bottom",
+                        "Unfavored",
+                    ],
+                    "Difficulty": [-1, -1, 0, 0, 1, 2, 2],
+                }
+            ),
+            on=matchup,
+            how="left",
         )
-    )[["Spirit", "Difficulty", "Complexity"]]
-    matchups.Spirit = matchups.Spirit.astype(pd.StringDtype())
+        .select(
+            pl.col("Name"),
+            pl.col("Difficulty"),
+            pl.col("Aspect"),
+            pl.col("Complexity"),
+        )
+    )
+
+    # Find the best aspects.
+    matchups = (
+        matchups.group_by(["Name", "Difficulty"])
+        .agg([pl.col("Aspect"), pl.max("Complexity")])
+        .filter(pl.col("Difficulty").eq(pl.min("Difficulty").over("Name")))
+        .with_columns(
+            pl.when(pl.col("Aspect").list.drop_nulls().list.len().eq(0))
+            .then(pl.col("Name"))
+            .otherwise(
+                pl.concat_str(
+                    [
+                        pl.col("Name"),
+                        pl.lit(" ("),
+                        pl.col("Aspect").list.join(", "),
+                        pl.lit(")"),
+                    ]
+                )
+            )
+            .alias("Spirit")
+        )
+    )
+
+    # Reorder and clean up columns.
+    matchups = matchups.with_columns(pl.lit(matchup).alias("Matchup")).select(
+        pl.col("Matchup"), pl.col("Difficulty"), pl.col("Complexity"), pl.col("Spirit")
+    )
 
     return matchups
 
 
-# matchups = calculate_matchups("Sweden", spirits)
-# inspect(matchups)
-# matchups.dtypes
+# %%
+matchups = calculate_matchups("England", all_spirits)
 
 
 # %%
