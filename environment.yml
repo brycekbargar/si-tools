@@ -5,4 +5,5 @@ channels:
   - nodefaults
 dependencies:
   - python>=3.12,<3.13
+  - metaflow>=2.10.8,<3
   - ruff
