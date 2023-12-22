@@ -26,9 +26,9 @@ if hasattr(__builtins__, "__IPYTHON__"):
 
 # %%
 def adversaries_by_expansions(
-    expansions: int, adversaries: pl.LazyFrame
+    expansions: int, adversaries: pl.LazyFrame, escalations: pl.LazyFrame
 ) -> pl.LazyFrame:
-    """Filter and clean Adversary data."""
+    """Filter and clean Adversary data, padding if necessary."""
     import polars as pl
 
     # Filter to just the given expansions.
@@ -37,13 +37,23 @@ def adversaries_by_expansions(
         pl.col("Expansion").or_(expansions).eq(expansions)
     ).drop("Expansion")
 
-    return adversaries
+    if adversaries.clone().select(pl.col("Name").n_unique()).collect().item() > 3:
+        return adversaries
+
+    # Filter out the given expansions.
+    escalations = escalations.filter(pl.col("Expansion").and_(expansions).eq(0)).drop(
+        "Expansion"
+    )
+
+    return pl.concat([adversaries, escalations], how="diagonal")
 
 
 # %%
 if hasattr(__builtins__, "__IPYTHON__"):
     all_adversaries = adversaries_by_expansions(
-        31, pl.scan_csv("../data/adversaries.tsv", separator="\t")
+        2,
+        pl.scan_csv("../data/adversaries.tsv", separator="\t"),
+        pl.scan_csv("../data/escalations.tsv", separator="\t"),
     )
 
 # %%
