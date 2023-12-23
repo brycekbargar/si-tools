@@ -32,8 +32,10 @@ def spirits_by_expansions(expansions: int, spirits: pl.LazyFrame) -> pl.LazyFram
 
     # Filter to just the given expansions.
     # Expansions is a bitfield, this is assuming that a superset of the expansions for a spirit are required.
-    spirits = spirits.filter(pl.col("Expansions").or_(expansions).eq(expansions)).drop(
-        "Expansions"
+    spirits = (
+        spirits.clone()
+        .filter(pl.col("Expansions").or_(expansions).eq(expansions))
+        .drop("Expansions")
     )
 
     # Cleanup the Aspect column.
@@ -75,6 +77,7 @@ if hasattr(__builtins__, "__IPYTHON__"):
     all_spirits = spirits_by_expansions(
         63, pl.scan_csv("../data/spirits.tsv", separator="\t")
     )
+    print(all_spirits.collect())
 
 
 # %%
@@ -84,7 +87,8 @@ def calculate_matchups(matchup: str, spirits: pl.LazyFrame) -> pl.LazyFrame:
 
     # Convert matchhup from text to numeric difficulty.
     matchups = (
-        spirits.filter(pl.Expr.not_(pl.col(matchup).eq(pl.lit("Unplayable"))))
+        spirits.clone()
+        .filter(pl.Expr.not_(pl.col(matchup).eq(pl.lit("Unplayable"))))
         .join(
             pl.LazyFrame(
                 {
@@ -144,10 +148,11 @@ def calculate_matchups(matchup: str, spirits: pl.LazyFrame) -> pl.LazyFrame:
 # %%
 if hasattr(__builtins__, "__IPYTHON__"):
     matchups = calculate_matchups("Sweden", all_spirits)
+    print(matchups.collect())
 
 
 # %%
-def generate_combinations(count: int, matchups: pl.DataFrame) -> pl.DataFrame:
+def generate_combinations(count: int, matchups: pl.LazyFrame) -> pl.LazyFrame:
     """Generate all possible combinations of spirits."""
     import polars as pl
 
@@ -160,7 +165,7 @@ def generate_combinations(count: int, matchups: pl.DataFrame) -> pl.DataFrame:
         return expr
 
     combos = matchups.clone().rename({"Spirit": "Spirit_0"})
-    matchups = matchups.drop("Matchup")
+    matchups = matchups.clone().drop("Matchup")
     for i in range(1, count):
         combos = (
             combos.join(matchups, how="cross")
@@ -180,6 +185,7 @@ def generate_combinations(count: int, matchups: pl.DataFrame) -> pl.DataFrame:
 
 # %%
 if hasattr(__builtins__, "__IPYTHON__"):
-    print(generate_combinations(2, matchups).collect())
+    print(generate_combinations(3, matchups).collect())
+
 
 # %%

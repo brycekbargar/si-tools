@@ -34,9 +34,11 @@ def adversaries_by_expansions(
 
     # Filter to just the given expansions.
     # Expansions is a bitfield, this is assuming that a superset of the expansions for an Adversary are required.
-    adversaries = adversaries.filter(
-        pl.col("Expansion").or_(expansions).eq(expansions)
-    ).drop("Expansion")
+    adversaries = (
+        adversaries.clone()
+        .filter(pl.col("Expansion").or_(expansions).eq(expansions))
+        .drop("Expansion")
+    )
 
     if adversaries.clone().select(pl.col("Name").n_unique()).collect().item() > 3:
         return adversaries
@@ -52,9 +54,23 @@ def adversaries_by_expansions(
 # %%
 if hasattr(__builtins__, "__IPYTHON__"):
     all_adversaries = adversaries_by_expansions(
-        2,
+        63,
         pl.scan_csv("../data/adversaries.tsv", separator="\t"),
         pl.scan_csv("../data/escalations.tsv", separator="\t"),
     )
+    print(all_adversaries.collect())
+
+
+# %%
+def unique_matchups(adversaries: pl.LazyFrame) -> pl.LazyFrame:
+    """Get unique matchups from the list of Adversaries."""
+    import polars as pl
+
+    return adversaries.clone().unique(subset=["Matchup"]).select(pl.col("Matchup"))
+
+
+# %%
+if hasattr(__builtins__, "__IPYTHON__"):
+    print(unique_matchups(all_adversaries))
 
 # %%
