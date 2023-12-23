@@ -16,8 +16,9 @@
 # %conda install polars --yes
 
 # %%
+import polars as pl
+
 if hasattr(__builtins__, "__IPYTHON__"):
-    import polars as pl
     from rich import inspect, print
 
     inspect("ruff/isort strip out rich")
