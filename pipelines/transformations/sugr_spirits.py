@@ -180,6 +180,11 @@ def generate_combinations(count: int, matchups: pl.LazyFrame) -> pl.LazyFrame:
             .filter(_unique_spirits(i))
         )
 
+    # Normalize the complexity
+    combos = combos.with_columns(
+        pl.col("Complexity").truediv(count).round().cast(pl.Int64)
+    )
+
     return combos
 
 

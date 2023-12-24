@@ -6,11 +6,20 @@ class SugrGamesFlow(FlowSpec):
     @step
     def start(self):
         import polars as pl
+        from pathlib import Path
 
+        self.output_parquet = f"./data/results/{current.run_id}"
+        Path(self.output_parquet).mkdir(parents=True, exist_ok=True)
         self.expansions_tsv = pl.scan_csv("./data/expansions.tsv", separator="\t")
-        self.spirits_tsv = pl.scan_csv("./data/spirits.tsv", separator="\t")
-        self.adversaries_tsv = pl.scan_csv("./data/adversaries.tsv", separator="\t")
-        self.escalations_tsv = pl.scan_csv("./data/escalations.tsv", separator="\t")
+        self.spirits_tsv = pl.scan_csv(
+            "./data/spirits.tsv", separator="\t", low_memory=True
+        )
+        self.adversaries_tsv = pl.scan_csv(
+            "./data/adversaries.tsv", separator="\t", low_memory=True
+        )
+        self.escalations_tsv = pl.scan_csv(
+            "./data/escalations.tsv", separator="\t", low_memory=True
+        )
 
         self.next(self.fanout_expansions)
 
@@ -51,30 +60,20 @@ class SugrGamesFlow(FlowSpec):
 
     @step
     def fanout_players(self):
-        self.players = list(range(1, self.max_players + 1))
+        self.players = list(range(1, min(self.max_players, 3) + 1))
 
         self.next(self.generate_combinations, foreach="players")
 
     @step
     def generate_combinations(self):
-        from transformations.sugr_spirits import generate_combinations
-        import polars as pl
+        from transformations.sugr_games import combine
         import typing
 
-        combinations = self.adversaries.join(
-            pl.concat(
-                [
-                    generate_combinations(typing.cast(int, self.input), m)
-                    for m in self.matchups
-                ]
-            ),
-            on="Matchup",
+        combinations = combine(
+            typing.cast(int, self.input), self.adversaries, self.matchups
         )
-
-        combinations.sink_parquet(
-            f"./data/results/{current.run_id}/{self.expansions:2}{self.players:2}.parquet",
-            maintain_order=False,
-            statistics=True,
+        combinations.collect(streaming=True).write_parquet(
+            f"{self.output_parquet}/{self.expansions:2}{self.input:2}.parquet",
         )
 
         self.next(self.collect_players)
