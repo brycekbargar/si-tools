@@ -8,18 +8,15 @@ class SugrGamesFlow(FlowSpec):
         import polars as pl
         from pathlib import Path
 
+        self.concat_hack = f"./data/temp/{current.run_id}"
+        Path(self.concat_hack).mkdir(parents=True, exist_ok=True)
         self.output_parquet = f"./data/results/{current.run_id}"
         Path(self.output_parquet).mkdir(parents=True, exist_ok=True)
+
         self.expansions_tsv = pl.scan_csv("./data/expansions.tsv", separator="\t")
-        self.spirits_tsv = pl.scan_csv(
-            "./data/spirits.tsv", separator="\t", low_memory=True
-        )
-        self.adversaries_tsv = pl.scan_csv(
-            "./data/adversaries.tsv", separator="\t", low_memory=True
-        )
-        self.escalations_tsv = pl.scan_csv(
-            "./data/escalations.tsv", separator="\t", low_memory=True
-        )
+        self.spirits_tsv = pl.scan_csv("./data/spirits.tsv", separator="\t")
+        self.adversaries_tsv = pl.scan_csv("./data/adversaries.tsv", separator="\t")
+        self.escalations_tsv = pl.scan_csv("./data/escalations.tsv", separator="\t")
 
         self.next(self.fanout_expansions)
 
@@ -69,11 +66,16 @@ class SugrGamesFlow(FlowSpec):
         from transformations.sugr_games import combine
         import typing
 
+        print(f"expansions:{self.expansions}, players:{self.input}")
         combinations = combine(
-            typing.cast(int, self.input), self.adversaries, self.matchups
+            typing.cast(int, self.input),
+            self.adversaries,
+            self.matchups,
+            hack_concat_file=f"{self.concat_hack}/{current.task_id}",
         )
-        combinations.collect(streaming=True).write_parquet(
-            f"{self.output_parquet}/{self.expansions:2}{self.input:2}.parquet",
+        combinations.sink_parquet(
+            f"{self.output_parquet}/{self.expansions:02}{self.input:02}.parquet",
+            maintain_order=False,
         )
 
         self.next(self.collect_players)

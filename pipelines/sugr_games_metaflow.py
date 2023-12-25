@@ -63,15 +63,19 @@ print(all_games.clone().head().collect())
 # %%
 import random
 
-range = (6, 9)
+diff = (8, 9)
+comp = (3, 8)
 
 source_games = pl.scan_parquet("./data/results/1703458137835502/31 2.parquet")
 filtered = source_games.filter(
-    (pl.col("Difficulty") >= range[0])
-    & (pl.col("Difficulty") < range[1])
-    & (pl.col("Complexity") < 6)
+    (pl.col("Difficulty") >= diff[0])
+    & (pl.col("Difficulty") < diff[1])
+    & (pl.col("Complexity") >= comp[0])
+    & (pl.col("Complexity") < comp[1])
 )
 total = filtered.select(pl.count("Name")).collect().item()
 print(filtered.collect(streaming=True).row(random.randrange(total)))
+
+# %%
 
 # %%
