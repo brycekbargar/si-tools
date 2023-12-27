@@ -19,6 +19,7 @@
 # ruff: noqa: E402
 from metaflow import Step
 from rich import print, inspect
+import polars as pl
 
 inspect("ruff/isort strip out rich")
 print("unless it is used")
@@ -38,7 +39,7 @@ matchups[0].collect()
 
 # %%
 from transformations.sugr_spirits import generate_combinations
-import polars as pl
+# import polars as pl
 
 combinations = adversaries.join(
     pl.concat([generate_combinations(2, m).collect().lazy for m in matchups]),
@@ -51,7 +52,7 @@ combinations.show_graph(comm_subplan_elim=False, streaming=True)
 combinations.sink_parquet("test.parquet")
 
 # %%
-import polars as pl
+# import polars as pl
 
 diff = pl.col("Difficulty")
 comp = pl.col("Complexity")
@@ -63,8 +64,8 @@ print(all_games.clone().head().collect())
 # %%
 import random
 
-diff = (8, 9)
-comp = (3, 8)
+diff = (7, 9)
+comp = (6, 15)
 
 source_games = pl.scan_parquet("./data/results/1703458137835502/31 2.parquet")
 filtered = source_games.filter(

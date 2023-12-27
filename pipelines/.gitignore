@@ -1,6 +1,7 @@
 *.ipynb
 .metaflow/
 data/results/
+data/temp/
 
 ### Python ###
 # Byte-compiled / optimized / DLL files
