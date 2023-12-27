@@ -50,11 +50,8 @@ class State:
     def temp_matchups(self):
         return self.temp / f"{self.expansions:02}_{self.matchup}_matchups.parquet"
 
-    def temp_combinations(self, players: int, suffix: str = "final"):
-        return (
-            self.temp
-            / f"{self.expansions:02}_{self.matchup}_{players:02}_{suffix}.parquet"
-        )
+    def temp_combinations(self, players: int):
+        return self.temp / f"{self.expansions:02}_{self.matchup}_{players:02}.parquet"
 
 
 def main():
@@ -91,7 +88,8 @@ def main():
     state = State("./data")
     for exp_row in expansions_tsv.rows(named=True):
         if cast(int, exp_row["Value"]) not in [1, 2, 11]:
-            continue
+            # continue
+            pass
 
         state.reset(exp_row)
 
@@ -131,10 +129,9 @@ def main():
             .with_columns(pl.col("Value").alias("Complexity"))
             .drop("Value")
         )
-
         spirits.sink_parquet(state.temp_spirits(), maintain_order=False)
-        state.check(0, "Spirits", state.temp_spirits())
 
+        state.check(0, "Spirits", state.temp_spirits())
         del spirits
         gc.collect()
 
@@ -151,7 +148,6 @@ def main():
             adversaries = pl.concat([adversaries, escalations_tsv], how="diagonal")
 
         adversaries.sink_parquet(state.temp_adversaries(), maintain_order=False)
-        state.check(0, "Adversaries", state.temp_adversaries())
 
         matchups = [
             cast(str, m[0])
@@ -163,6 +159,7 @@ def main():
         ]
         state.log_indent(0, ", ".join(matchups))
 
+        state.check(0, "Adversaries", state.temp_adversaries())
         del adversaries
         gc.collect()
 
@@ -255,19 +252,86 @@ def main():
                         .alias("Spirit"),
                     )
                 )
-
             spirit_matchups = spirit_matchups.select(
                 pl.col("Difficulty"),
                 pl.col("Complexity"),
                 pl.col("Spirit"),
             )
-
             # sink_parquet doesn't support the list/string munging for aspects
             spirit_matchups.collect(streaming=True).write_parquet(state.temp_matchups())
-            state.check(1, f"Matchups for {matchup}", state.temp_matchups())
 
+            state.check(1, f"Matchups for {matchup}", state.temp_matchups())
             del spirit_matchups
             gc.collect()
+
+            (
+                pl.scan_parquet(state.temp_matchups())
+                .with_columns(
+                    [
+                        pl.lit(matchup).alias("Matchup"),
+                        pl.col("Complexity").alias("NComplexity"),
+                        pl.col("Spirit").hash().alias("Hash"),
+                    ]
+                )
+                .rename({"Spirit": "Spirit_0"})
+                .select(
+                    pl.col("Matchup"),
+                    pl.col("Difficulty"),
+                    pl.col("NComplexity"),
+                    pl.col("Complexity"),
+                    pl.col("Spirit_0"),
+                    pl.col("Hash"),
+                )
+                .sink_parquet(state.temp_combinations(1), maintain_order=False)
+            )
+
+            state.check(2, "Combinations for 1 player", state.temp_combinations(1))
+            gc.collect()
+
+            for pi in range(1, cast(int, exp_row["Players"])):
+                sp_col = f"Spirit_{pi}"
+                players = pi + 1
+
+                def _unique_spirits() -> pl.Expr:
+                    spirit_n = pl.col(sp_col)
+                    expr = pl.Expr.not_(spirit_n.eq(pl.col("Spirit_0")))
+                    for i in range(pi - 1, 0, -1):
+                        expr = expr.and_(
+                            pl.Expr.not_(spirit_n.eq(pl.col(f"Spirit_{i}")))
+                        )
+                    return expr
+
+                (
+                    pl.scan_parquet(state.temp_matchups())
+                    .join(
+                        pl.scan_parquet(state.temp_combinations(players - 1)),
+                        how="cross",
+                    )
+                    .with_columns(
+                        [
+                            pl.col("Difficulty").add(pl.col("Difficulty_right")),
+                            pl.col("Complexity").add(pl.col("Complexity_right")),
+                            pl.col("Hash").add(pl.col("Spirit").hash()),
+                            pl.col("Complexity")
+                            .truediv(players)
+                            .round()
+                            .cast(pl.Int8)
+                            .alias("NComplexity"),
+                        ]
+                    )
+                    .rename({"Spirit": sp_col})
+                    .drop("Difficulty_right", "Complexity_right")
+                    .filter(_unique_spirits())
+                    .sort("NComplexity", descending=True)
+                    .unique(subset="Hash", keep="first")
+                ).sink_parquet(state.temp_combinations(players), maintain_order=False)
+
+                state.check(
+                    2,
+                    f"Combinations for {players} players",
+                    state.temp_combinations(players),
+                )
+                gc.collect()
 
 
 if __name__ == "__main__":
