@@ -53,6 +53,12 @@ class State:
     def temp_combinations(self, players: int):
         return self.temp / f"{self.expansions:02}_{self.matchup}_{players:02}.parquet"
 
+    def all_temp_combinations(self, players: int):
+        return self.temp / f"{self.expansions:02}_*_{players:02}.parquet"
+
+    def temp_games(self, players: int):
+        return self.temp / f"{self.expansions:02}_{players:02}_games.parquet"
+
 
 def main():
     expansions_tsv = pl.read_csv(
@@ -88,8 +94,8 @@ def main():
     state = State("./data")
     for exp_row in expansions_tsv.rows(named=True):
         if cast(int, exp_row["Value"]) not in [1, 2, 11]:
-            # continue
-            pass
+            continue
+            # pass
 
         state.reset(exp_row)
 
@@ -145,7 +151,17 @@ def main():
             adversaries.clone().select(pl.col("Adversary").n_unique()).collect().item()
             <= 3
         ):
-            adversaries = pl.concat([adversaries, escalations_tsv], how="diagonal")
+            adversaries = pl.concat(
+                [
+                    adversaries,
+                    (
+                        escalations_tsv.filter(
+                            pl.col("Expansion").and_(state.expansions).eq(0)
+                        ).drop("Expansion")
+                    ),
+                ],
+                how="diagonal",
+            )
 
         adversaries.sink_parquet(state.temp_adversaries(), maintain_order=False)
 
@@ -332,6 +348,35 @@ def main():
                     state.temp_combinations(players),
                 )
                 gc.collect()
+
+        state.log_rule("Games")
+
+        for players in range(1, cast(int, exp_row["Players"]) + 1):
+            all_combos = (
+                pl.scan_parquet(state.all_temp_combinations(players))
+                .drop("Hash", "Complexity")
+                .rename({"NComplexity": "Complexity"})
+            )
+
+            (
+                pl.scan_parquet(state.temp_adversaries())
+                .join(all_combos, on="Matchup")
+                .with_columns(
+                    [
+                        pl.col("Difficulty").add(pl.col("Difficulty_right")),
+                        pl.col("Complexity").add(pl.col("Complexity_right")),
+                    ]
+                )
+                .drop("Difficulty_right", "Complexity_right", "Matchup")
+            ).sink_parquet(state.temp_games(players))
+
+            state.check(
+                1,
+                f"Games for {players} players",
+                state.temp_games(players),
+            )
+            del all_combos
+            gc.collect()
 
 
 if __name__ == "__main__":
