@@ -1,6 +1,7 @@
 import polars as pl
 import time
 from rich.console import Console
+from rich.progress import track
 from pathlib import Path
 import gc
 from typing import cast, Any
@@ -20,9 +21,11 @@ class State:
         self.temp = self.root / "temp" / str(self.run)
         self.temp.mkdir(parents=True, exist_ok=True)
 
-    def reset(self, row: dict[str, Any]):
+    def reset(self, row: dict[str, Any], silent=False):
         self.expansions = cast(int, row["Value"])
-        self.console.print()
+        if silent:
+            return
+
         self.console.rule(f"{self.run} / {self.expansions}", align="left")
         self.console.log(cast(str, row["Expansions"]), justify="center")
         self.console.print()
@@ -36,6 +39,7 @@ class State:
     def check(self, indent: int, rtype: str, loc: Path):
         records = fp.ParquetFile(loc, verify=True)
         self.log_indent(indent, f"{records.count()} {rtype}: {records.dtypes}")
+        del records
 
     def temp_spirits(self):
         return self.temp / f"{self.expansions:02}_spirits.parquet"
@@ -58,6 +62,24 @@ class State:
 
     def temp_games(self, players: int):
         return self.temp / f"{self.expansions:02}_{players:02}_games.parquet"
+
+    def all_temp_games(self):
+        return self.temp / "*_games.parquet"
+
+    def temp_stats(self, kind: str):
+        return self.temp / f"stats_{kind}.parquet"
+
+    def temp_final_games(self, players: int, difficulty: int, complexity: int):
+        return (
+            self.temp
+            / f"{self.expansions:02}{players:02}{difficulty:02}{complexity:02}.parquet"
+        )
+
+    def final_games(self, players: int, difficulty: int, complexity: int):
+        return (
+            self.output
+            / f"{self.expansions:02}{players:02}{difficulty:02}{complexity:02}.arrow"
+        )
 
 
 def main():
@@ -93,7 +115,7 @@ def main():
 
     state = State("./data")
     for exp_row in expansions_tsv.rows(named=True):
-        if cast(int, exp_row["Value"]) not in [1, 2, 11]:
+        if cast(int, exp_row["Value"]) not in [1, 2, 13, 31]:
             continue
             # pass
 
@@ -328,12 +350,14 @@ def main():
                             pl.col("Difficulty").add(pl.col("Difficulty_right")),
                             pl.col("Complexity").add(pl.col("Complexity_right")),
                             pl.col("Hash").add(pl.col("Spirit").hash()),
-                            pl.col("Complexity")
-                            .truediv(players)
-                            .round()
-                            .cast(pl.Int8)
-                            .alias("NComplexity"),
                         ]
+                    )
+                    .with_columns(
+                        pl.col("Complexity")
+                        .truediv(players)
+                        .round()
+                        .cast(pl.Int8)
+                        .alias("NComplexity"),
                     )
                     .rename({"Spirit": sp_col})
                     .drop("Difficulty_right", "Complexity_right")
@@ -368,6 +392,7 @@ def main():
                     ]
                 )
                 .drop("Difficulty_right", "Complexity_right", "Matchup")
+                .with_columns(pl.col("Difficulty").clip(lower_bound=0))
             ).sink_parquet(state.temp_games(players))
 
             state.check(
@@ -377,6 +402,111 @@ def main():
             )
             del all_combos
             gc.collect()
+
+    state.log_rule("Final Game Generation")
+
+    (mean, std) = (
+        pl.scan_parquet(state.all_temp_games())
+        .filter(pl.col("Difficulty").gt(0))
+        .select(
+            pl.col("Difficulty").mean().alias("Difficulty Mean"),
+            pl.col("Difficulty").std().alias("Difficulty Std"),
+        )
+        .collect(streaming=True)
+        .row(0)
+    )
+
+    state.log_indent(1, f"Difficulty mean:{mean}, std:{std}")
+
+    stats = (
+        pl.scan_parquet(state.all_temp_games())
+        .select(pl.col("Difficulty"), pl.col("Complexity"))
+        .filter(pl.col("Difficulty").gt(0) & pl.col("Difficulty").lt(mean + 2 * std))
+        .with_columns(
+            [
+                pl.col("Difficulty")
+                .qcut([0.25, 0.5, 0.75], labels=["1", "2", "3", "4"])
+                .cast(pl.Utf8)
+                .str.to_integer()
+                .cast(pl.Int8)
+                .alias("Difficulty Range"),
+                pl.col("Complexity")
+                .qcut(
+                    [0.25, 0.5, 0.75],
+                    labels=["0", "1", "2", "3"],
+                )
+                .cast(pl.Utf8)
+                .str.to_integer()
+                .cast(pl.Int8)
+                .alias("Complexity Range"),
+            ]
+        )
+    )
+
+    (stats.clone().select("Complexity", "Complexity Range").unique()).collect(
+        streaming=True
+    ).write_parquet(state.temp_stats("complexity"))
+    state.check(1, "Stats", state.temp_stats("complexity"))
+
+    (stats.clone().select("Difficulty", "Difficulty Range").unique()).collect(
+        streaming=True
+    ).write_parquet(state.temp_stats("difficulty"))
+    state.check(1, "Stats", state.temp_stats("difficulty"))
+
+    gc.collect()
+
+    final_stats = {}
+    for exp_row in track(expansions_tsv.rows(named=True), description="Expansions"):
+        if cast(int, exp_row["Value"]) not in [1, 2, 13, 31]:
+            continue
+
+        state.reset(exp_row, silent=True)
+        final_stats[state.expansions] = {}
+
+        for players in range(1, cast(int, exp_row["Players"]) + 1):
+            final_stats[state.expansions][players] = {}
+            for d in range(5):
+                final_stats[state.expansions][players][d] = {}
+                for c in range(4):
+                    games = (
+                        pl.scan_parquet(state.temp_games(players))
+                        .join(
+                            pl.scan_parquet(state.temp_stats("complexity")),
+                            on="Complexity",
+                        )
+                        .join(
+                            pl.scan_parquet(state.temp_stats("difficulty")),
+                            on="Difficulty",
+                            how="left",
+                        )
+                        .drop("Difficulty", "Complexity")
+                        .filter(
+                            (
+                                pl.col("Difficulty Range").is_null()
+                                if d == 0
+                                else pl.col("Difficulty Range").eq(d)
+                            )
+                            & pl.col("Complexity Range").eq(c)
+                        )
+                        .drop("Difficulty Range", "Complexity Range")
+                    )
+                    games.sink_parquet(
+                        state.temp_final_games(players, d, c), maintain_order=False
+                    )
+                    games.sink_ipc(
+                        state.final_games(players, d, c), maintain_order=False
+                    )
+
+                    records = fp.ParquetFile(
+                        state.temp_final_games(players, d, c), verify=True
+                    )
+                    final_stats[state.expansions][players][d][c] = records.count()
+
+                    del records
+                    del games
+                    gc.collect()
+
+    state.log_indent(0, str(final_stats))
 
 
 if __name__ == "__main__":
