@@ -48,7 +48,7 @@ class SugrGamesFlow(FlowSpec):
         )
         (self.expansions, self.max_players) = typing.cast(tuple[int, int], input)
 
-        self.spirits_parquet = self.temp / f"{self.expansion:02}_spirits.parquet"
+        self.spirits_parquet = self.temp / f"{self.expansions:02}_spirits.parquet"
         (
             spirits_by_expansions(
                 self.expansions, pl.scan_csv(self.spirits_tsv, separator="\t")
@@ -56,7 +56,7 @@ class SugrGamesFlow(FlowSpec):
         ).sink_parquet(self.spirits_parquet, maintain_order=False)
 
         self.adversaries_parquet = (
-            self.temp / f"{self.expansion:02}_adversaries.parquet"
+            self.temp / f"{self.expansions:02}_adversaries.parquet"
         )
         (adversaries, self.matchups) = adversaries_by_expansions(
             self.expansions,
@@ -81,7 +81,7 @@ class SugrGamesFlow(FlowSpec):
         self.matchup = typing.cast(str, self.input)
 
         self.spirits_matchups_parquet = (
-            self.temp / f"{self.expansion:02}_{self.matchup}_spirits.parquet"
+            self.temp / f"{self.expansions:02}_{self.matchup}_spirits.parquet"
         )
         (
             calculate_matchups(
@@ -102,7 +102,7 @@ class SugrGamesFlow(FlowSpec):
         import polars as pl
 
         self.combinations_parquet = [
-            self.temp / f"{self.expansion:02}_{self.matchup}_01.parquet"
+            self.temp / f"{self.expansions:02}_{self.matchup}_01.parquet"
         ]
         (
             generate_combinations(
@@ -115,7 +115,7 @@ class SugrGamesFlow(FlowSpec):
 
         for players in range(2, self.max_players + 1):
             self.combinations_parquet.append(
-                self.temp / f"{self.expansion:02}_{self.matchup}_{players:02}.parquet"
+                self.temp / f"{self.expansions:02}_{self.matchup}_{players:02}.parquet"
             )
             (
                 generate_combinations(
@@ -131,13 +131,24 @@ class SugrGamesFlow(FlowSpec):
 
     @step
     def collect_matchups(self, inputs):
+        self.merge_artifacts(
+            inputs,
+            include=[
+                "expansions_tsv",
+                "temp",
+                "output",
+                "expansions",
+                "adversaries_parquet",
+            ],
+        )
+
         self.combinations_parquet = {}
-        for p in range(len(inputs[0].combinations)):
+        for p in range(len(inputs[0].combinations_parquet)):
             self.combinations_parquet[p + 1] = [
                 i.combinations_parquet[p] for i in inputs
             ]
 
-        self.players = self.combinations_parquet.keys()
+        self.players = list(self.combinations_parquet.keys())
         self.next(self.fanout_players)
 
     @step
@@ -164,12 +175,18 @@ class SugrGamesFlow(FlowSpec):
 
     @step
     def collect_players(self, inputs):
-        self.games_parquet_by_players = {i.players: i.game_parquet for i in inputs}
+        self.merge_artifacts(
+            inputs, include=["expansions_tsv", "temp", "output", "expansions"]
+        )
+
+        self.games_parquet_by_players = {i.players: i.games_parquet for i in inputs}
         self.games_parquet = [i.games_parquet for i in inputs]
         self.next(self.collect_expansions)
 
     @step
     def collect_expansions(self, inputs):
+        self.merge_artifacts(inputs, include=["expansions_tsv", "temp", "output"])
+
         self.games_parquet_by_expansions_and_players = {
             i.expansions: i.games_parquet_by_players for i in inputs
         }
@@ -197,14 +214,25 @@ class SugrGamesFlow(FlowSpec):
 
     @step
     def fanout_buckets(self):
+        import polars as pl
+
+        expansions = (
+            pl.scan_csv(self.expansions_tsv, separator="\t")
+            .filter(pl.col("Value").is_in([1, 2, 13, 31]))
+            .collect(streaming=True)
+            .rows(named=True)
+        )
+
         self.buckets = []
-        for exp in typing.cast(list[dict[str, typing.Any]], self.expansions):
+        for exp in typing.cast(list[dict[str, typing.Any]], expansions):
             for players in range(1, exp["Players"] + 1):
                 for d in range(5):
                     for c in range(4):
                         self.buckets.append(
                             (typing.cast(int, exp["Value"]), players, d, c)
                         )
+        del expansions
+        gc.collect()
 
         self.next(self.bucket_games, foreach="buckets")
 
@@ -260,6 +288,8 @@ class SugrGamesFlow(FlowSpec):
 
     @step
     def collect_buckets(self, inputs):
+        self.merge_artifacts(inputs, include=["temp", "output"])
+
         self.stats = [list(i.bucket + (i.count,)) for i in inputs]
         self.next(self.write_stats)
 
@@ -278,7 +308,7 @@ class SugrGamesFlow(FlowSpec):
             schema[:-1]
         )
         stats.write_csv(self.temp / "stats.tsv", separator="\t")
-        stats.write_json(self.output / "stats.json", row_oriented=True)
+        stats.write_ipc(self.output / "stats.arrow")
         del stats
         gc.collect()
 
