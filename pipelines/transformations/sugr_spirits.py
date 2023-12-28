@@ -17,6 +17,7 @@
 
 # %%
 import polars as pl
+import typing
 
 if hasattr(__builtins__, "__IPYTHON__"):
     from rich import inspect, print
@@ -28,18 +29,13 @@ if hasattr(__builtins__, "__IPYTHON__"):
 # %%
 def spirits_by_expansions(expansions: int, spirits: pl.LazyFrame) -> pl.LazyFrame:
     """Filter, and clean Spirit data."""
-    import polars as pl
 
-    # Filter to just the given expansions.
-    # Expansions is a bitfield, this is assuming that a superset of the expansions for a spirit are required.
     spirits = (
         spirits.clone()
         .filter(pl.col("Expansions").or_(expansions).eq(expansions))
         .drop("Expansions")
     )
 
-    # Cleanup the Aspect column.
-    # We only care to label spirits as the "Base" version when aspects are available.
     spirits = (
         spirits.join(spirits.group_by("Name").count(), on="Name", how="left")
         .with_columns(
@@ -53,14 +49,17 @@ def spirits_by_expansions(expansions: int, spirits: pl.LazyFrame) -> pl.LazyFram
         .drop("count")
     )
 
-    # Convert Complexity from text to numeric.
     spirits = (
         spirits.join(
             pl.LazyFrame(
                 {
                     "Complexity": ["Low", "Moderate", "High", "Very High"],
                     "Value": [0, 1, 2, 4],
-                }
+                },
+                schema={
+                    "Complexity": None,
+                    "Value": pl.Int8,
+                },
             ),
             on="Complexity",
             how="left",
@@ -77,32 +76,34 @@ if hasattr(__builtins__, "__IPYTHON__"):
     all_spirits = spirits_by_expansions(
         63, pl.scan_csv("../data/spirits.tsv", separator="\t")
     )
-    print(all_spirits.collect())
+    print(all_spirits.collect(streaming=True))
 
 
 # %%
 def calculate_matchups(matchup: str, spirits: pl.LazyFrame) -> pl.LazyFrame:
-    """Calculate the difficulty modifiers and best spirits for the matchup."""
-    import polars as pl
+    """Calculate the difficulty modifiers and best/worst spirits for the matchup."""
 
-    # Convert matchhup from text to numeric difficulty.
-    matchups = (
+    spirit_matchups = (
         spirits.clone()
-        .filter(pl.Expr.not_(pl.col(matchup).eq(pl.lit("Unplayable"))))
         .join(
             pl.LazyFrame(
                 {
                     matchup: [
-                        "Top",
                         "Counters",
-                        "Mid+",
                         "Neutral",
+                        "Unfavored",
+                        "Unplayable",
+                        "Top",
+                        "Mid+",
                         "Mid-",
                         "Bottom",
-                        "Unfavored",
                     ],
-                    "Difficulty": [-1, -1, 0, 0, 1, 2, 2],
-                }
+                    "Difficulty": [-1, 0, 2, 99, -2, -1, 0, 2],
+                },
+                schema={
+                    matchup: None,
+                    "Difficulty": pl.Int8,
+                },
             ),
             on=matchup,
             how="left",
@@ -113,103 +114,149 @@ def calculate_matchups(matchup: str, spirits: pl.LazyFrame) -> pl.LazyFrame:
             pl.col("Aspect"),
             pl.col("Complexity"),
         )
+        .with_columns(pl.col("Aspect").count().over("Name").name.suffix(" Count"))
     )
 
-    # Find the best aspects.
-    best_aspects = (
-        matchups.clone()
-        .group_by(["Name", "Difficulty"])
-        .agg([pl.col("Aspect"), pl.max("Complexity")])
-        .filter(pl.col("Difficulty").eq(pl.min("Difficulty").over("Name")))
-        .with_columns(
-            pl.when(pl.col("Aspect").list.drop_nulls().list.len().eq(0))
-            .then(pl.col("Name"))
-            .otherwise(
-                pl.concat_str(
-                    [
-                        pl.col("Name"),
-                        pl.lit(" ("),
-                        pl.col("Aspect").list.join(", "),
-                        pl.lit(")"),
-                    ]
-                )
+    if matchup == "Tier":
+        spirit_matchups = (
+            spirit_matchups.clone()
+            .group_by("Name")
+            .agg(
+                [
+                    pl.max("Aspect Count"),
+                    pl.min("Difficulty"),
+                    pl.max("Complexity"),
+                ]
             )
-            .alias("Spirit")
+            .with_columns(
+                pl.when(pl.col("Aspect Count").eq(0))
+                .then(pl.col("Name"))
+                .otherwise(pl.concat_str([pl.col("Name"), pl.lit(" (Any)")]))
+                .alias("Spirit"),
+            )
         )
-        # Array aggregation/manipulation and filter over aren't supported in streaming mode so we DataFrame them
-        .collect(streaming=True)
-    ).lazy()
-    matchups = (
-        matchups.drop("Complexity")
-        .join(best_aspects, on=["Name", "Difficulty"])
-        .unique(subset=["Spirit"], maintain_order=False)
+
+    else:
+        spirit_matchups = (
+            spirit_matchups.clone()
+            .filter(pl.Expr.not_(pl.col("Difficulty").eq(99)))
+            .group_by(["Name", "Difficulty"])
+            .agg(
+                [
+                    pl.col("Aspect"),
+                    pl.max("Aspect Count"),
+                    pl.max("Complexity"),
+                ]
+            )
+            .filter(pl.col("Difficulty").eq(pl.min("Difficulty").over("Name")))
+            .with_columns(
+                pl.when(pl.col("Aspect Count").eq(0))
+                .then(pl.col("Name"))
+                .otherwise(
+                    pl.concat_str(
+                        [
+                            pl.col("Name"),
+                            pl.lit(" ("),
+                            pl.col("Aspect").list.join(", "),
+                            pl.lit(")"),
+                        ]
+                    )
+                )
+                .alias("Spirit"),
+            )
+        )
+
+    spirit_matchups = spirit_matchups.select(
+        pl.col("Difficulty"),
+        pl.col("Complexity"),
+        pl.col("Spirit"),
     )
 
-    # Reorder and clean up columns.
-    matchups = matchups.with_columns(pl.lit(matchup).alias("Matchup")).select(
-        pl.col("Matchup"), pl.col("Difficulty"), pl.col("Complexity"), pl.col("Spirit")
-    )
-
-    return matchups
+    # list/string munging isn't supported by sink_parquet as of 0.20.2
+    return spirit_matchups.collect(streaming=True).lazy()
 
 
 # %%
 if hasattr(__builtins__, "__IPYTHON__"):
     matchups = calculate_matchups("Sweden", all_spirits)
-    print(matchups.collect())
+    print(matchups.collect(streaming=True))
 
 
 # %%
-def generate_combinations(count: int, matchups: pl.LazyFrame) -> pl.LazyFrame:
+def generate_combinations(
+    matchup: str,
+    players: int,
+    matchups: pl.LazyFrame,
+    previous_combos: typing.Optional[pl.LazyFrame] = None,
+) -> pl.LazyFrame:
     """Generate all possible combinations of spirits."""
-    import polars as pl
 
-    def _unique_spirits(sc: int) -> pl.Expr:
-        """Check the latest cross-joined spirit column against all the previous ones."""
-        spirit_n = pl.col(f"Spirit_{sc}")
-        expr = pl.lit(1).eq(pl.lit(1))
-        for i in range(sc - 1, -1, -1):
+    if players == 1:
+        return (
+            matchups.clone()
+            .with_columns(
+                [
+                    pl.lit(matchup).alias("Matchup"),
+                    pl.col("Complexity").alias("NComplexity"),
+                    pl.col("Spirit").hash().alias("Hash"),
+                ]
+            )
+            .rename({"Spirit": "Spirit_0"})
+            .select(
+                pl.col("Matchup"),
+                pl.col("Difficulty"),
+                pl.col("NComplexity"),
+                pl.col("Complexity"),
+                pl.col("Spirit_0"),
+                pl.col("Hash"),
+            )
+        )
+
+    if previous_combos is None:
+        raise Exception("Requires previously generated combos for 2+ players")
+
+    sp_col = f"Spirit_{(players-1)}"
+
+    def _unique_spirits() -> pl.Expr:
+        spirit_n = pl.col(sp_col)
+        expr = pl.Expr.not_(spirit_n.eq(pl.col("Spirit_0")))
+        for i in range(players - 2, 0, -1):
             expr = expr.and_(pl.Expr.not_(spirit_n.eq(pl.col(f"Spirit_{i}"))))
         return expr
 
-    # The query optimizer handles this mutlple self cross join + rename poorly
-    # One solution was to use .cache() on the query plan for each iteration
-    # .cache() isn't supporting when sinking to parquet though
-    # materializing them as dataframes (whhen they have only like 30 rows) seems to work and is btter than materializing the huge cross joins later
-    combos = (
+    return (
         matchups.clone()
-        .with_columns(pl.col("Spirit").alias("Spirit_0"))
-        .collect(streaming=True)
-        .lazy()
-    )
-    matchups = matchups.clone().drop("Matchup").collect(streaming=True).lazy()
-    for i in range(1, count):
-        combos = (
-            combos.join(matchups, how="cross")
-            .with_columns(
-                [
-                    pl.col("Difficulty").add(pl.col("Difficulty_right")),
-                    pl.col("Complexity").add(pl.col("Complexity_right")),
-                    pl.col("Spirit_right").alias(f"Spirit_{i}"),
-                ]
-            )
-            .drop("Difficulty_right", "Complexity_right", "Spirit_right")
-            .filter(_unique_spirits(i))
+        .join(
+            previous_combos.clone(),
+            how="cross",
         )
-
-    # Normalize the complexity
-    combos = combos.with_columns(
-        pl.col("Complexity").truediv(count).round().cast(pl.Int64)
-    ).drop("Spirit")
-
-    return combos
+        .with_columns(
+            [
+                pl.col("Difficulty").add(pl.col("Difficulty_right")),
+                pl.col("Complexity").add(pl.col("Complexity_right")),
+                pl.col("Hash").add(pl.col("Spirit").hash()),
+            ]
+        )
+        .with_columns(
+            pl.col("Complexity")
+            .truediv(players)
+            .round()
+            .cast(pl.Int8)
+            .alias("NComplexity"),
+        )
+        .rename({"Spirit": sp_col})
+        .drop("Difficulty_right", "Complexity_right")
+        .filter(_unique_spirits())
+        .sort("NComplexity", descending=True)
+        .unique(subset="Hash", keep="first")
+    )
 
 
 # %%
 if hasattr(__builtins__, "__IPYTHON__"):
-    combos = generate_combinations(4, matchups)
-    # print(combos.collect(streaming=True))
-    combos.sink_parquet("test_combo.parquet", maintain_order=False)
-
+    combos = generate_combinations(
+        "Sweden", 2, matchups, generate_combinations("Sweden", 1, matchups)
+    )
+    print(combos.collect(streaming=True))
 
 # %%

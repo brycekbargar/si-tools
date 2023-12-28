@@ -28,34 +28,16 @@ if hasattr(__builtins__, "__IPYTHON__"):
 
 
 # %%
-def combine(
-    players: int,
-    adversaries: pl.LazyFrame,
-    matchups: list[pl.LazyFrame],
-    hack_concat_file: str | None = None,
-) -> pl.LazyFrame:
+def combine(adversaries: pl.LazyFrame, combos: pl.LazyFrame) -> pl.LazyFrame:
     """Combines spirits and adversaries to create the complete set of games."""
 
-    import polars as pl
-
-    from .sugr_spirits import generate_combinations
-
-    # pl.concat doesn't work with streaming
-    if hack_concat_file:
-        for i, m in enumerate(matchups):
-            generate_combinations(players, m).sink_parquet(
-                f"{hack_concat_file}_{i}.parquet",
-                maintain_order=False,
-            )
-        matchups = pl.scan_parquet(f"{hack_concat_file}_*.parquet")
-    else:
-        matchups = pl.concat([generate_combinations(players, m) for m in matchups])
+    all_combos = (
+        combos.clone().drop("Hash", "Complexity").rename({"NComplexity": "Complexity"})
+    )
 
     return (
-        adversaries.join(
-            matchups,
-            on="Matchup",
-        )
+        adversaries.clone()
+        .join(all_combos, on="Matchup")
         .with_columns(
             [
                 pl.col("Difficulty").add(pl.col("Difficulty_right")),
@@ -63,44 +45,101 @@ def combine(
             ]
         )
         .drop("Difficulty_right", "Complexity_right", "Matchup")
+        .with_columns(pl.col("Difficulty").clip(lower_bound=0))
     )
 
 
 # %%
 if hasattr(__builtins__, "__IPYTHON__"):
-    import polars as pl
-    import sugr_adversaries as sa
-    import sugr_spirits as ss
+    # TODO: Redo harness
+    pass
 
-    spirits = ss.spirits_by_expansions(
-        31, pl.scan_csv("../data/spirits.tsv", separator="\t")
-    )
-    # spirits.sink_parquet("test_spirits.parquet", maintain_order=False)
-    adversaries = sa.adversaries_by_expansions(
-        31,
-        pl.scan_csv("../data/adversaries.tsv", separator="\t"),
-        pl.scan_csv("../data/escalations.tsv", separator="\t"),
-    )
-    # adversaries.sink_parquet("test_adversaries.parquet", maintain_order=False)
-
-    matchups = [
-        ss.calculate_matchups(m[0], spirits)
-        for m in sa.unique_matchups(adversaries).collect().rows()
-    ]
-    # for i, m in enumerate(matchups):
-    #  matchups[i].sink_parquet(f"test_matchups_{i}.parquet", maintain_order=False)
-    # pl.concat(matchups, how="align", parallel=False).sink_parquet("test_matchups.parqet", maintain_order=False)
-    # matchups[0].merge_sorted(matchups[1], key="Name").sink_parquet("test_matchups.parqet", maintain_order=False)
-
-    games = combine(5, adversaries, matchups, hack_concat_file="./hack")
-    games.sink_parquet("test_games.parquet", maintain_order=False)
-    # games.show_graph(streaming=True)
-    # games.collect(streaming=True)
 
 # %%
-if hasattr(__builtins__, "__IPYTHON__"):
-    print(pl.scan_parquet("./test_games.parquet").tail(15).collect())
 
-# %%
+
+def define_buckets(all_games: pl.LazyFrame) -> tuple[pl.LazyFrame, pl.LazyFrame]:
+    """Find difficulty/complexity ranges to bucket games into."""
+
+    (mean, stddev) = (
+        all_games.clone()
+        .select(
+            pl.col("Difficulty").mean().alias("Difficulty Mean"),
+            pl.col("Difficulty").std().alias("Difficulty Std"),
+        )
+        .collect(streaming=True)
+        .row(0)
+    )
+    max_difficulty = mean + 2 * stddev
+
+    stats = (
+        all_games.clone()
+        .select(pl.col("Difficulty"), pl.col("Complexity"))
+        .filter(pl.col("Difficulty").gt(0) & pl.col("Difficulty").lt(max_difficulty))
+        .with_columns(
+            [
+                pl.col("Difficulty")
+                .qcut([0.25, 0.5, 0.75], labels=["1", "2", "3", "4"])
+                .cast(pl.Utf8)
+                .str.to_integer()
+                .cast(pl.Int8)
+                .alias("Difficulty Range"),
+                pl.col("Complexity")
+                .qcut(
+                    [0.25, 0.5, 0.75],
+                    labels=["0", "1", "2", "3"],
+                )
+                .cast(pl.Utf8)
+                .str.to_integer()
+                .cast(pl.Int8)
+                .alias("Complexity Range"),
+            ]
+        )
+    )
+
+    # qcut isn't supported by sink_parquet as of 0.20.2
+    return (
+        stats.clone()
+        .select("Difficulty", "Difficulty Range")
+        .unique()
+        .collect(streaming=True)
+        .lazy(),
+        stats.clone()
+        .select("Complexity", "Complexity Range")
+        .unique()
+        .collect(streaming=True)
+        .lazy(),
+    )
+
+
+def filter_by_bucket(
+    bucket: tuple[int, int],
+    difficulty: pl.LazyFrame,
+    complexity: pl.LazyFrame,
+    games: pl.LazyFrame,
+) -> pl.LazyFrame:
+    return (
+        games.clone()
+        .join(
+            complexity,
+            on="Complexity",
+        )
+        .join(
+            difficulty,
+            on="Difficulty",
+            how="left",
+        )
+        .drop("Difficulty", "Complexity")
+        .filter(
+            (
+                pl.col("Difficulty Range").is_null()
+                if bucket[0] == 0
+                else pl.col("Difficulty Range").eq(bucket[0])
+            )
+            & pl.col("Complexity Range").eq(bucket[1])
+        )
+        .drop("Difficulty Range", "Complexity Range")
+    )
+
 
 # %%

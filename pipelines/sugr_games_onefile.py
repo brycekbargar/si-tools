@@ -407,7 +407,6 @@ def main():
 
     (mean, std) = (
         pl.scan_parquet(state.all_temp_games())
-        .filter(pl.col("Difficulty").gt(0))
         .select(
             pl.col("Difficulty").mean().alias("Difficulty Mean"),
             pl.col("Difficulty").std().alias("Difficulty Std"),
