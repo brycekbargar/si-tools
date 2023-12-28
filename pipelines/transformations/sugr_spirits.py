@@ -19,12 +19,6 @@
 import polars as pl
 import typing
 
-if hasattr(__builtins__, "__IPYTHON__"):
-    from rich import inspect, print
-
-    inspect("ruff/isort strip out rich")
-    print("unless it is used")
-
 
 # %%
 def spirits_by_expansions(expansions: int, spirits: pl.LazyFrame) -> pl.LazyFrame:

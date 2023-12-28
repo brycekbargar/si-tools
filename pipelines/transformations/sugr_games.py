@@ -13,18 +13,10 @@
 # ---
 
 # %%
-# %conda install polars=="0.19.13" --yes
+# %conda install polars --yes
 
 # %%
 import polars as pl
-
-if hasattr(__builtins__, "__IPYTHON__"):
-    from rich import inspect, print
-
-    inspect("ruff/isort strip out rich")
-    print("unless it is used")
-
-    pl.show_versions()
 
 
 # %%
@@ -56,8 +48,6 @@ if hasattr(__builtins__, "__IPYTHON__"):
 
 
 # %%
-
-
 def define_buckets(all_games: pl.LazyFrame) -> tuple[pl.LazyFrame, pl.LazyFrame]:
     """Find difficulty/complexity ranges to bucket games into."""
 
@@ -112,12 +102,21 @@ def define_buckets(all_games: pl.LazyFrame) -> tuple[pl.LazyFrame, pl.LazyFrame]
     )
 
 
+# %%
+if hasattr(__builtins__, "__IPYTHON__"):
+    # TODO: Redo harness
+    pass
+
+
+# %%
 def filter_by_bucket(
     bucket: tuple[int, int],
     difficulty: pl.LazyFrame,
     complexity: pl.LazyFrame,
     games: pl.LazyFrame,
 ) -> pl.LazyFrame:
+    """Filter the given set of games to bucket based on difficulty/complexity."""
+
     return (
         games.clone()
         .join(
@@ -143,3 +142,6 @@ def filter_by_bucket(
 
 
 # %%
+if hasattr(__builtins__, "__IPYTHON__"):
+    # TODO: Redo harness
+    pass
