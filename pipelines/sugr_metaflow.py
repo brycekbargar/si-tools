@@ -44,14 +44,23 @@ total_games = (
     )
     .select("Count")
 ).item()
-r_game = random.randrange(total_games)
-print(r_game)
 
+r_game = random.randrange(total_games)
 (
     pl.scan_parquet(temp / f"3102{difficulty:02}{complexity:02}.parquet")
-    .head(r_game + 1)
+    .head(r_game)
     .last()
 ).collect().glimpse()
+
+sugr_islands = Flow("SugrIslandsFlow")
+
+temp = typing.cast(Path, sugr_islands.latest_successful_run.data.temp)
+total_islands = (
+    pl.read_parquet(temp / "6B02_islands.parquet").select(pl.count())
+).item()
+
+r_island = random.randrange(total_islands)
+(pl.read_parquet(temp / "6B02_islands.parquet").row(r_game, named=True))
 
 # %%
 

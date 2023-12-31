@@ -81,11 +81,11 @@ class SugrIslandsFlow(FlowSpec):
         )
 
         self.islands_parquet = (
-            self.temp / f"{self.island_type}_{self.players}_islands.parquet"
+            self.temp / f"{self.island_type}{self.players:02}_islands.parquet"
         )
         islands.sink_parquet(self.islands_parquet, maintain_order=False)
         self.islands_arrow = (
-            self.output / f"{self.island_type}_{self.players}_islands.arrow"
+            self.output / f"{self.island_type}{self.players:02}_islands.arrow"
         )
         islands.sink_ipc(self.islands_arrow, maintain_order=False)
 
