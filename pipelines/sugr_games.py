@@ -258,18 +258,17 @@ class SugrGamesFlow(FlowSpec):
 
         self.games_parquet = (
             self.temp
-            / f"{expansions:02}{players:02}{difficulty:02}{complexity:02}.parquet"
+            / f"{expansions:02}{players:02}{difficulty:02}{complexity:02}_games.parquet"
         )
         games.sink_parquet(self.games_parquet, maintain_order=False)
         games_arrow = (
             self.output
-            / f"{expansions:02}{players:02}{difficulty:02}{complexity:02}.arrow"
+            / f"{expansions:02}{players:02}{difficulty:02}{complexity:02}_games.arrow"
         )
         games.sink_ipc(games_arrow, maintain_order=False)
 
         del games
         gc.collect()
-
         self.next(self.count_games)
 
     @step
@@ -282,8 +281,8 @@ class SugrGamesFlow(FlowSpec):
             .collect(streaming=True)
             .item()
         )
-        gc.collect()
 
+        gc.collect()
         self.next(self.collect_buckets)
 
     @step
