@@ -1,4 +1,4 @@
-from metaflow import FlowSpec, step, conda_base, current
+from metaflow import FlowSpec, step, conda, conda_base, current
 from pathlib import Path
 import typing
 import gc
@@ -261,13 +261,26 @@ class SugrGamesFlow(FlowSpec):
             / f"{expansions:02}{players:02}{difficulty:02}{complexity:02}_games.parquet"
         )
         games.sink_parquet(self.games_parquet, maintain_order=False)
-        games_arrow = (
+        self.games_arrow = (
             self.output
             / f"{expansions:02}{players:02}{difficulty:02}{complexity:02}_games.feather"
         )
-        games.sink_ipc(games_arrow, maintain_order=False)
+        # The JS implementation of arrow can't handle large_strings as of 14.0.2
+        # The next release probably has it: https://github.com/apache/arrow/pull/35780
+        # Until then we have to convert to short strings
+        # games.sink_ipc(self.games_arrow, maintain_order=False)
 
         del games
+        gc.collect()
+        self.next(self.shorten_utf8)
+
+    @conda(python=">=3.12,<3.13", packages={"pyarrow": "14.0.2"})
+    @step
+    def shorten_utf8(self):
+        from largeutf8 import make_longutf8_shorter
+
+        make_longutf8_shorter(self.games_parquet, self.games_arrow)
+
         gc.collect()
         self.next(self.count_games)
 

@@ -1,4 +1,4 @@
-from metaflow import FlowSpec, step, conda_base, current
+from metaflow import FlowSpec, step, conda, conda_base, current
 from pathlib import Path
 import typing
 import gc
@@ -70,9 +70,13 @@ class SugrIslandsFlow(FlowSpec):
         gc.collect()
         self.next(self.generate_loose_islands)
 
+    @conda(
+        python=">=3.12,<3.13", packages={"pyarrow": "14.0.2", "polars": ">=0.20.2,<1"}
+    )
     @step
     def generate_loose_islands(self):
         from transformations.sugr_islands import generate_loose_islands
+        from largeutf8 import make_longutf8_shorter
         import polars as pl
 
         islands = generate_loose_islands(
@@ -84,10 +88,11 @@ class SugrIslandsFlow(FlowSpec):
             self.temp / f"{self.island_type}{self.players:02}_islands.parquet"
         )
         islands.sink_parquet(self.islands_parquet, maintain_order=False)
-        self.islands_arrow = (
+        islands_arrow = (
             self.output / f"{self.island_type}{self.players:02}_islands.feather"
         )
-        islands.sink_ipc(self.islands_arrow, maintain_order=False)
+        make_longutf8_shorter(self.islands_parquet, islands_arrow)
+        # islands.sink_ipc(islands_arrow, maintain_order=False)
 
         del islands
         gc.collect()
@@ -121,9 +126,13 @@ class SugrIslandsFlow(FlowSpec):
         # do something with counts
         self.next(self.join_islandtypes)
 
+    @conda(
+        python=">=3.12,<3.13", packages={"pyarrow": "14.0.2", "polars": ">=0.20.2,<1"}
+    )
     @step
     def fixed_board_islands(self):
         from transformations.sugr_islands import generate_fixed_islands
+        from largeutf8 import make_longutf8_shorter
 
         # TODO: Make this data driven?
         for p in range(1, 3 + 1):
@@ -131,8 +140,10 @@ class SugrIslandsFlow(FlowSpec):
 
             islands_parquet = self.temp / f"FB{p:02}_islands.parquet"
             islands.sink_parquet(islands_parquet, maintain_order=False)
-            islands_arrow = self.temp / f"FB{p:02}_islands.feather"
-            islands.sink_ipc(islands_arrow, maintain_order=False)
+
+            islands_arrow = self.output / f"FB{p:02}_islands.feather"
+            make_longutf8_shorter(islands_parquet, islands_arrow)
+            # islands.sink_ipc(islands_arrow, maintain_order=False)
 
             # count = islands.select(pl.count()).collect(streaming=True).item
 
