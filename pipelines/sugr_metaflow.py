@@ -35,7 +35,7 @@ sugr_games = Flow("SugrGamesFlow")
 
 temp = typing.cast(Path, sugr_games.latest_successful_run.data.temp)
 total_games = (
-    pl.read_csv(temp / "stats.tsv", separator="\t")
+    pl.read_parquet(temp / "stats.parquet")
     .filter(
         (pl.col("Expansions") == 31)
         & (pl.col("Players") == 2)

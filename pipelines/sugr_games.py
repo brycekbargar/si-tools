@@ -306,7 +306,7 @@ class SugrGamesFlow(FlowSpec):
         stats = pl.DataFrame(typing.cast(list[int], self.stats), schema=schema).sort(
             schema[:-1]
         )
-        stats.write_csv(self.temp / "stats.tsv", separator="\t")
+        stats.write_parquet(self.temp / "stats.parquet")
         stats.write_ipc(self.output / "stats.feather")
         del stats
         gc.collect()
