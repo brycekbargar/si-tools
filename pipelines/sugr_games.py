@@ -263,7 +263,7 @@ class SugrGamesFlow(FlowSpec):
         games.sink_parquet(self.games_parquet, maintain_order=False)
         games_arrow = (
             self.output
-            / f"{expansions:02}{players:02}{difficulty:02}{complexity:02}_games.arrow"
+            / f"{expansions:02}{players:02}{difficulty:02}{complexity:02}_games.feather"
         )
         games.sink_ipc(games_arrow, maintain_order=False)
 
@@ -307,7 +307,7 @@ class SugrGamesFlow(FlowSpec):
             schema[:-1]
         )
         stats.write_csv(self.temp / "stats.tsv", separator="\t")
-        stats.write_ipc(self.output / "stats.arrow")
+        stats.write_ipc(self.output / "stats.feather")
         del stats
         gc.collect()
 
