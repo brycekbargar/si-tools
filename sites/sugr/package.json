@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json.schemastore.org/package.json",
+  "name": "sugr",
+  "version": "1.0.0",
+  "description": "Spirit island Uh-pinionated Game Randomizer",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/brycekbargar/si-tools.git"
+  },
+  "author": "bryce",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/brycekbargar/si-tools/issues"
+  },
+  "homepage": "sugr.brycekbargar.com"
+}
