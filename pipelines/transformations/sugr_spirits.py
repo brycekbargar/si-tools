@@ -13,11 +13,12 @@
 # ---
 
 # %%
-# %conda install polars --yes
+# %mamba install polars --yes --quiet
 
 # %%
-import polars as pl
 import typing
+
+import polars as pl
 
 
 # %%
@@ -191,13 +192,15 @@ def generate_combinations(
             .with_columns(
                 [
                     pl.lit(matchup).alias("Matchup"),
-                    pl.col("Complexity").alias("NComplexity"),
+                    pl.col("Difficulty").cast(pl.Float32).alias("NDifficulty"),
+                    pl.col("Complexity").cast(pl.Float32).alias("NComplexity"),
                     pl.col("Spirit").hash().alias("Hash"),
                 ]
             )
             .rename({"Spirit": "Spirit_0"})
             .select(
                 pl.col("Matchup"),
+                pl.col("NDifficulty"),
                 pl.col("Difficulty"),
                 pl.col("NComplexity"),
                 pl.col("Complexity"),
@@ -232,11 +235,8 @@ def generate_combinations(
             ]
         )
         .with_columns(
-            pl.col("Complexity")
-            .truediv(players)
-            .round()
-            .cast(pl.Int8)
-            .alias("NComplexity"),
+            pl.col("Difficulty").truediv(players).cast(pl.Float32).alias("NDifficulty"),
+            pl.col("Complexity").truediv(players).cast(pl.Float32).alias("NComplexity"),
         )
         .rename({"Spirit": sp_col})
         .drop("Difficulty_right", "Complexity_right")

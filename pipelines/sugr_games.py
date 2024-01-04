@@ -28,6 +28,7 @@ class SugrGamesFlow(FlowSpec):
 
         self.expansions = (
             pl.scan_csv(self.expansions_tsv, separator="\t")
+            # .filter(pl.col("Value").is_in([1, 2, 13, 17]))
             .filter(pl.col("Value").is_in([1, 2, 13, 31]))
             .collect(streaming=True)
             .rows(named=True)
@@ -218,6 +219,7 @@ class SugrGamesFlow(FlowSpec):
 
         expansions = (
             pl.scan_csv(self.expansions_tsv, separator="\t")
+            # .filter(pl.col("Value").is_in([1, 2, 13, 17]))
             .filter(pl.col("Value").is_in([1, 2, 13, 31]))
             .collect(streaming=True)
             .rows(named=True)
@@ -227,7 +229,7 @@ class SugrGamesFlow(FlowSpec):
         for exp in typing.cast(list[dict[str, typing.Any]], expansions):
             for players in range(1, exp["Players"] + 1):
                 for d in range(5):
-                    for c in range(4):
+                    for c in range(5):
                         self.buckets.append(
                             (typing.cast(int, exp["Value"]), players, d, c)
                         )

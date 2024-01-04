@@ -63,5 +63,9 @@ r_island = random.randrange(total_islands)
 (pl.read_parquet(temp / "6B02_islands.parquet").row(r_game, named=True))
 
 # %%
+sugr_games = Flow("SugrGamesFlow")
+
+temp = typing.cast(Path, sugr_games.latest_successful_run.data.temp)
+pl.read_parquet(temp / "stats.parquet")
 
 # %%

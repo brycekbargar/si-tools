@@ -24,7 +24,9 @@ def combine(adversaries: pl.LazyFrame, combos: pl.LazyFrame) -> pl.LazyFrame:
     """Combines spirits and adversaries to create the complete set of games."""
 
     all_combos = (
-        combos.clone().drop("Hash", "Complexity").rename({"NComplexity": "Complexity"})
+        combos.clone()
+        .drop("Hash", "Difficulty", "Complexity")
+        .rename({"NDifficulty": "Difficulty", "NComplexity": "Complexity"})
     )
 
     return (
@@ -37,7 +39,6 @@ def combine(adversaries: pl.LazyFrame, combos: pl.LazyFrame) -> pl.LazyFrame:
             ]
         )
         .drop("Difficulty_right", "Complexity_right", "Matchup")
-        .with_columns(pl.col("Difficulty").clip(lower_bound=0))
     )
 
 
@@ -60,29 +61,30 @@ def define_buckets(all_games: pl.LazyFrame) -> tuple[pl.LazyFrame, pl.LazyFrame]
         .collect(streaming=True)
         .row(0)
     )
+    min_difficulty = mean - 2 * stddev
     max_difficulty = mean + 2 * stddev
 
     stats = (
         all_games.clone()
         .select(pl.col("Difficulty"), pl.col("Complexity"))
-        .filter(pl.col("Difficulty").gt(0) & pl.col("Difficulty").lt(max_difficulty))
+        .filter(
+            pl.col("Difficulty").gt(min_difficulty)
+            & pl.col("Difficulty").lt(max_difficulty)
+        )
         .with_columns(
             [
                 pl.col("Difficulty")
-                .qcut([0.25, 0.5, 0.75], labels=["1", "2", "3", "4"])
+                .qcut(5, labels=["0", "1", "2", "3", "4"])
                 .cast(pl.Utf8)
                 .str.to_integer()
                 .cast(pl.Int8)
-                .alias("Difficulty Range"),
+                .alias("Difficulty Bucket"),
                 pl.col("Complexity")
-                .qcut(
-                    [0.25, 0.5, 0.75],
-                    labels=["0", "1", "2", "3"],
-                )
+                .qcut(5, labels=["0", "1", "2", "3", "4"])
                 .cast(pl.Utf8)
                 .str.to_integer()
                 .cast(pl.Int8)
-                .alias("Complexity Range"),
+                .alias("Complexity Bucket"),
             ]
         )
     )
@@ -90,13 +92,21 @@ def define_buckets(all_games: pl.LazyFrame) -> tuple[pl.LazyFrame, pl.LazyFrame]
     # qcut isn't supported by sink_parquet as of 0.20.2
     return (
         stats.clone()
-        .select("Difficulty", "Difficulty Range")
-        .unique()
+        .group_by("Difficulty Bucket")
+        .agg(
+            pl.min("Difficulty").name.suffix(" Min"),
+            pl.max("Difficulty").name.suffix(" Max"),
+        )
+        .rename({"Difficulty Bucket": "Bucket"})
         .collect(streaming=True)
         .lazy(),
         stats.clone()
-        .select("Complexity", "Complexity Range")
-        .unique()
+        .group_by("Complexity Bucket")
+        .agg(
+            pl.min("Complexity").name.suffix(" Min"),
+            pl.max("Complexity").name.suffix(" Max"),
+        )
+        .rename({"Complexity Bucket": "Bucket"})
         .collect(streaming=True)
         .lazy(),
     )
@@ -105,7 +115,11 @@ def define_buckets(all_games: pl.LazyFrame) -> tuple[pl.LazyFrame, pl.LazyFrame]
 # %%
 if hasattr(__builtins__, "__IPYTHON__"):
     # TODO: Redo harness
-    pass
+    buckets = define_buckets(
+        pl.scan_parquet("../data/temp/1704403407472060/*_games.parquet")
+    )
+    print(buckets[0].sort("Bucket").collect(streaming=True))
+    print(buckets[1].sort("Bucket").collect(streaming=True))
 
 
 # %%
@@ -117,27 +131,26 @@ def filter_by_bucket(
 ) -> pl.LazyFrame:
     """Filter the given set of games to bucket based on difficulty/complexity."""
 
-    return (
-        games.clone()
-        .join(
-            complexity,
-            on="Complexity",
-        )
-        .join(
-            difficulty,
-            on="Difficulty",
-            how="left",
-        )
-        .drop("Difficulty", "Complexity")
-        .filter(
-            (
-                pl.col("Difficulty Range").is_null()
-                if bucket[0] == 0
-                else pl.col("Difficulty Range").eq(bucket[0])
-            )
-            & pl.col("Complexity Range").eq(bucket[1])
-        )
-        .drop("Difficulty Range", "Complexity Range")
+    (diff_min, diff_max) = (
+        difficulty.clone()
+        .filter(pl.col("Bucket").eq(bucket[0]))
+        .select("Difficulty Min", "Difficulty Max")
+        .collect(streaming=True)
+        .row(0)
+    )
+    (comp_min, comp_max) = (
+        complexity.clone()
+        .filter(pl.col("Bucket").eq(bucket[1]))
+        .select("Complexity Min", "Complexity Max")
+        .collect(streaming=True)
+        .row(0)
+    )
+
+    return games.clone().filter(
+        pl.col("Difficulty").ge(diff_min)
+        & pl.col("Difficulty").le(diff_max)
+        & pl.col("Complexity").ge(comp_min)
+        & pl.col("Complexity").le(comp_max)
     )
 
 
