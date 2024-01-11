@@ -22,6 +22,19 @@ include = ["*"]
 cmd = ["check-case-conflict"]
 ok_exit_codes = [0]
 
+[commands."quicklintjs.lint"]
+type = "lint"
+include = ["*.js"]
+cmd = ["npx", "--no", "quick-lint-js"]
+ok_exit_codes = [0]
+[commands."prettier.format"]
+type = "both"
+include = ["*.js", "*.html", "*.astro"]
+cmd = ["npx", "--no", "prettier"]
+lint_flags = ["--check"]
+tidy_flags = ["--write"]
+ok_exit_codes = [0]
+
 [commands."ruff.lint"]
 type = "both"
 include = ["*.py"]

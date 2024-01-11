@@ -17,5 +17,22 @@
   "bugs": {
     "url": "https://github.com/brycekbargar/si-tools/issues"
   },
-  "homepage": "sugr.brycekbargar.com"
+  "homepage": "sugr.brycekbargar.com",
+  "devDependencies": {
+    "@11ty/eleventy": "3.0.0-alpha.4",
+    "prettier": "^3.1.1",
+    "prettier-plugin-tailwindcss": "^0.5.11",
+    "quick-lint-js": "^3.0.0"
+  },
+  "prettier": {
+    "overrides": [
+      {
+        "files": "*.html",
+        "options": {
+          "useTabs": true,
+          "printWidth": 140
+        }
+      }
+    ]
+  }
 }
