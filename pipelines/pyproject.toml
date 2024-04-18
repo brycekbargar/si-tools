@@ -16,6 +16,7 @@ distribution = false
 [tool.pdm.dev-dependencies]
 dev = [
     "ruff>=0.3.7",
+    "pytest>=8.1.1",
 ]
 [tool.ruff]
 target-version = "py312"
