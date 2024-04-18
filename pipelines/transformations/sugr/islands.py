@@ -107,11 +107,6 @@ def generate_loose_islands(layouts: pl.LazyFrame, boards: pl.LazyFrame) -> pl.La
 
 
 # %%
-if hasattr(__builtins__, "__IPYTHON__"):
-    print(generate_loose_islands(layouts, boards).collect(streaming=True))
-
-
-# %%
 def generate_fixed_islands(players: int) -> pl.LazyFrame:
     """Hackily generates layouts + boards for Horizons only games."""
     match players:
