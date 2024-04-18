@@ -5,7 +5,9 @@ description = "Default template for PDM package"
 authors = [
     {name = "bryce", email = "brycekbargar@gmail.com"},
 ]
-dependencies = []
+dependencies = [
+    "polars>=0.20.21",
+]
 requires-python = "==3.12.*"
 readme = "README.md"
 license = {text = "MIT"}
@@ -18,6 +20,10 @@ dev = [
     "ruff>=0.3.7",
     "pytest>=8.1.1",
 ]
+
+[tool.pdm.scripts]
+test = "python -m pytest -vv"
+
 [tool.ruff]
 target-version = "py312"
 lint.fixable = ["ALL"]
