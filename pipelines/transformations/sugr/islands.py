@@ -1,27 +1,7 @@
-# ---
-# jupyter:
-#   jupytext:
-#     text_representation:
-#       extension: .py
-#       format_name: percent
-#       format_version: '1.3'
-#       jupytext_version: 1.16.0
-#   kernelspec:
-#     display_name: Python 3 (ipykernel)
-#     language: python
-#     name: python3
-# ---
-
-# %%
-# %mamba install polars --yes
-
-# %%
 from typing import Literal
-
 import polars as pl
 
 
-# %%
 def generate_board_combinations(
     total_boards: Literal[4] | Literal[6], players: int
 ) -> pl.LazyFrame:
@@ -58,55 +38,36 @@ def generate_board_combinations(
     ).with_columns(pl.lit(players).cast(pl.UInt8).alias("Players"))
 
 
-# %%
-if hasattr(__builtins__, "__IPYTHON__"):
-    boards = generate_board_combinations(6, 2)
-    print(boards.collect(streaming=True))
-
-
-# %%
-def explode_layouts(layouts: pl.LazyFrame) -> pl.LazyFrame:
-    """Takes a given set of layouts/weights and turns them into a randomized, selectable list."""
+def explode_layouts(layouts: pl.LazyFrame, players: int) -> pl.LazyFrame:
+    """Takes a given set of layouts/weights and turns them into a randomized, selectable list for the player count."""
     import random
 
-    def explode_choices(wc: pl.DataFrame) -> pl.DataFrame:
-        return pl.DataFrame(
-            random.choices(
-                wc.select("Players", "Name", "Standard").rows(),
-                weights=[r[0] for r in wc.select("Weight").iter_rows()],
-                k=150,
-            ),
-            {"Players": pl.UInt8, "Name": pl.Utf8, "Standard": pl.Boolean},
-        )
-
-    layouts = (
+    player_layouts = (
         layouts.clone()
-        .group_by(pl.col("Players"))
-        .map_groups(explode_choices, schema=None)
+        .filter(pl.col("Players").eq(pl.lit(players)))
+        .collect(streaming=True)
     )
 
-    # The streaming engine is having trouble with map_batches as of 0.20.2
-    return layouts.collect(streaming=True).lazy()
+    return pl.DataFrame(
+        random.choices(
+            player_layouts.select("Layout", "Standard").rows(),
+            weights=[r[0] for r in player_layouts.select("Weight").iter_rows()],
+            k=100,
+        ),
+        {"Layout": pl.Utf8, "Standard": pl.Boolean},
+    ).lazy()
 
 
-# %%
-if hasattr(__builtins__, "__IPYTHON__"):
-    layouts = explode_layouts(pl.scan_csv("../data/layouts.tsv", separator="\t"))
-    print(layouts.collect(streaming=True))
-
-
-# %%
 def generate_loose_islands(layouts: pl.LazyFrame, boards: pl.LazyFrame) -> pl.LazyFrame:
     """Generates all possible islands combing layouts + boards. This frame is sorted with the standard layout first."""
     return (
         layouts.clone()
-        .join(boards, on="Players")
-        .drop("Players")
+        .join(boards, how="cross")
         .sort(pl.col("Standard"), descending=True)
+        .select(["Layout", "Boards", "Standard"])
     )
 
 
-# %%
 def generate_fixed_islands(players: int) -> pl.LazyFrame:
     """Hackily generates layouts + boards for Horizons only games."""
     match players:
@@ -147,12 +108,3 @@ def generate_fixed_islands(players: int) -> pl.LazyFrame:
             )
 
     raise Exception("Only 1-3 players are supported on the fixed island board.")
-
-
-# %%
-if hasattr(__builtins__, "__IPYTHON__"):
-    print(generate_fixed_islands(2).collect(streaming=True))
-
-# %%
-
-# %%
