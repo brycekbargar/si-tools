@@ -1,7 +1,7 @@
 from unittest.mock import patch, MagicMock
 from pathlib import Path
 
-from pipelines.utilities.working_dir import WorkingDirectory as uut
+from utilities.working_dir import WorkingDirectory as uut
 
 
 class TestWorkingDirectory:

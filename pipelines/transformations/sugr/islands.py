@@ -3,7 +3,7 @@ import polars as pl
 
 
 def generate_board_combinations(
-    total_boards: Literal[4] | Literal[6], players: int
+    total_boards: Literal[4, 6], players: int
 ) -> pl.LazyFrame:
     """Generates all valid combinations of boards for the number of players."""
     from functools import reduce
@@ -64,7 +64,6 @@ def generate_loose_islands(layouts: pl.LazyFrame, boards: pl.LazyFrame) -> pl.La
         layouts.clone()
         .join(boards, how="cross")
         .sort(pl.col("Standard"), descending=True)
-        .select(["Layout", "Boards", "Standard"])
     )
 
 

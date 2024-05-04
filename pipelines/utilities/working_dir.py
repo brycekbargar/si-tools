@@ -1,3 +1,4 @@
+from typing import Any
 from pathlib import Path
 import re
 
@@ -13,7 +14,7 @@ class WorkingDirectory:
         """Creates a new WorkingDirectory."""
 
         self._path = path
-        self._path.mkdir(mode=755, parents=True, exist_ok=True)
+        self._path.mkdir(mode=0o755, parents=True, exist_ok=True)
 
     @classmethod
     def for_metaflow_run(cls, base: Path, run_id: int) -> "WorkingDirectory":
@@ -26,14 +27,16 @@ class WorkingDirectory:
 
         return WorkingDirectory(self._path / segment)
 
-    def push_partitions(self, *args: tuple[str, str]) -> "WorkingDirectory":
+    def push_partitions(self, *args: tuple[str, Any]) -> "WorkingDirectory":
         """Creates a new subdirectory of the WorkingDirectory.
 
         The subdirectory name will be based on the passed key/value pairs
         allowing for partitioning data based on its content.
         """
 
-        return WorkingDirectory(self._path / "&".join([f"{k}={v}" for (k, v) in args]))
+        return WorkingDirectory(
+            self._path / "&".join([f"{k}={str(v)}" for (k, v) in args])
+        )
 
     def glob_keys(self, file_glob: str, *args: str) -> str:
         """Gets the current WorkingDirectory + given file_glob as a string.

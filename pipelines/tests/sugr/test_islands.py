@@ -61,4 +61,3 @@ class TestLooseIslands:
             == expected
         )
         assert islands["Layout"][0] == "1p2"
-        assert sorted(islands.keys()) == sorted(["Layout", "Boards", "Standard"])

@@ -7,6 +7,8 @@ authors = [
 ]
 dependencies = [
     "polars>=0.20.21",
+    "metaflow>=2.11.12",
+    "pylint>=3.1.0",
 ]
 requires-python = "==3.12.*"
 readme = "README.md"
@@ -23,6 +25,7 @@ dev = [
 
 [tool.pdm.scripts]
 test = "python -m pytest -vv"
+flow_islands = "python -m flows.sugr.islands_flow --environment=conda run --input ./data/input/"
 
 [tool.ruff]
 target-version = "py312"
