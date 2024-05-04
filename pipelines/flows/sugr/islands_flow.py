@@ -3,7 +3,7 @@ import typing
 import gc
 
 
-@conda_base(python=">=3.12,<3.13", packages={"polars": ">=0.20.2,<1"})
+@conda_base(python=">=3.12,<3.13", packages={"polars": ">=0.20.21,<1"})
 class SugrIslandsFlow(FlowSpec):
     param_input = Parameter("input", required=True, type=str)
     param_temp = Parameter("temp", default="/tmp/sugr/islands")
