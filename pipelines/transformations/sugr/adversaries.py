@@ -1,35 +1,22 @@
-# ---
-# jupyter:
-#   jupytext:
-#     text_representation:
-#       extension: .py
-#       format_name: percent
-#       format_version: '1.3'
-#       jupytext_version: 1.16.0
-#   kernelspec:
-#     display_name: Python 3 (ipykernel)
-#     language: python
-#     name: python3
-# ---
+"""Provides operations on LazyFrames related to adversaries."""
 
-# ruff: noqa
-
-# %%
-# %conda install polars --yes
-
-# %%
 import typing
 
 import polars as pl
 
 
-# %%
 def adversaries_by_expansions(
     expansions: int,
     adversaries: pl.LazyFrame,
     escalations: pl.LazyFrame,
 ) -> tuple[pl.LazyFrame, list[str]]:
-    """Filter and clean Adversary data and Matchup data, padding if necessary with escalations."""
+    """Filter and clean Adversary data and Matchup data.
+
+    With three or fewer adveraries the list will be padded with additional
+    escalations based on adversaries not already included.
+
+    With more than four adversaries, if one is France level 5 & 6 will be removed.
+    """
     adversaries = (
         adversaries.clone()
         .filter(pl.col("Expansion").or_(expansions).eq(expansions))
@@ -44,7 +31,11 @@ def adversaries_by_expansions(
         .rename({"Name": "Adversary"})
     )
 
-    if adversaries.clone().select(pl.col("Adversary").n_unique()).collect().item() <= 3:
+    adv_count = (
+        adversaries.clone().select(pl.col("Adversary").n_unique()).collect().item()
+    )
+
+    if adv_count <= 3:
         adversaries = pl.concat(
             [
                 adversaries,
@@ -62,6 +53,15 @@ def adversaries_by_expansions(
             how="diagonal",
         )
 
+    if adv_count > 4:
+        adversaries = adversaries.filter(
+            (
+                pl.col("Adversary")
+                .eq(pl.lit("The Kingdom of France (Plantation Colony)"))
+                .not_()
+            ).or_(pl.col("Level").le(pl.lit(4))),
+        )
+
     matchups = [
         typing.cast(str, m[0])
         for m in adversaries.clone()
@@ -72,14 +72,3 @@ def adversaries_by_expansions(
     ]
 
     return (adversaries, matchups)
-
-
-# %%
-if hasattr(__builtins__, "__IPYTHON__"):
-    (all_adversaries, matchups) = adversaries_by_expansions(
-        63,
-        pl.scan_csv("../data/adversaries.tsv", separator="\t"),
-        pl.scan_csv("../data/escalations.tsv", separator="\t"),
-    )
-
-# %%
