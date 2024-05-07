@@ -1,11 +1,11 @@
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-from utilities.working_dir import WorkingDirectory as uut
+from flows.utilities.working_dir import WorkingDirectory as uut
 
 
 class TestWorkingDirectory:
-    @patch("utilities.working_dir.mkdtemp")
+    @patch("flows.utilities.working_dir.mkdtemp")
     @patch.object(Path, "mkdir")
     def test_dirs_are_created(
         self,
@@ -18,7 +18,7 @@ class TestWorkingDirectory:
         assert mock_mkdir.call_count == 2
         assert mkdtemp_mock.call_count == 1
 
-    @patch("utilities.working_dir.mkdtemp")
+    @patch("flows.utilities.working_dir.mkdtemp")
     def test_segments(self, mkdtemp_mock: MagicMock) -> None:
         with patch.object(Path, "mkdir"):
             mkdtemp_mock.return_value = "/test"
@@ -31,7 +31,7 @@ class TestWorkingDirectory:
         assert segment1.file("segment1.txt") == "/test/segment1/segment1.txt"
         assert segment2.file("segment2.txt") == "/test/segment/two/segment2.txt"
 
-    @patch("utilities.working_dir.mkdtemp")
+    @patch("flows.utilities.working_dir.mkdtemp")
     def test_partitions(self, mkdtemp_mock: MagicMock) -> None:
         with patch.object(Path, "mkdir"):
             mkdtemp_mock.return_value = "/test"
