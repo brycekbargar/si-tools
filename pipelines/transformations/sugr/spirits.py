@@ -1,28 +1,8 @@
-# ---
-# jupyter:
-#   jupytext:
-#     text_representation:
-#       extension: .py
-#       format_name: percent
-#       format_version: '1.3'
-#       jupytext_version: 1.16.0
-#   kernelspec:
-#     display_name: Python 3 (ipykernel)
-#     language: python
-#     name: python3
-# ---
-
-# ruff: noqa
-
-# %%
-# %mamba install polars --yes --quiet
-
-# %%
+"""Provides operations on LazyFrames related to spirits."""
 
 import polars as pl
 
 
-# %%
 def spirits_by_expansions(expansions: int, spirits: pl.LazyFrame) -> pl.LazyFrame:
     """Filter, and clean Spirit data."""
     spirits = (
@@ -32,11 +12,11 @@ def spirits_by_expansions(expansions: int, spirits: pl.LazyFrame) -> pl.LazyFram
     )
 
     spirits = (
-        spirits.join(spirits.group_by("Name").count(), on="Name", how="left")
+        spirits.join(spirits.group_by("Name").len(), on="Name", how="left")
         .with_columns(
             pl.when(pl.col("Aspect").is_not_null())
             .then(pl.col("Aspect"))
-            .when(pl.col("count").gt(1))
+            .when(pl.col("len").gt(1))
             .then(pl.lit("Base"))
             .otherwise(None)
             .alias("Aspect"),
@@ -52,7 +32,7 @@ def spirits_by_expansions(expansions: int, spirits: pl.LazyFrame) -> pl.LazyFram
                     "Value": [0, 1, 2, 4],
                 },
                 schema={
-                    "Complexity": None,
+                    "Complexity": pl.Null,
                     "Value": pl.Int8,
                 },
             ),
@@ -64,15 +44,6 @@ def spirits_by_expansions(expansions: int, spirits: pl.LazyFrame) -> pl.LazyFram
     )
 
 
-# %%
-if hasattr(__builtins__, "__IPYTHON__"):
-    all_spirits = spirits_by_expansions(
-        63,
-        pl.scan_csv("../data/spirits.tsv", separator="\t"),
-    )
-
-
-# %%
 def calculate_matchups(matchup: str, spirits: pl.LazyFrame) -> pl.LazyFrame:
     """Calculate the difficulty modifiers and best/worst spirits for the matchup."""
     spirit_matchups = (
@@ -93,7 +64,7 @@ def calculate_matchups(matchup: str, spirits: pl.LazyFrame) -> pl.LazyFrame:
                     "Difficulty": [-1, 0, 2, 99, -2, -1, 0, 2],
                 },
                 schema={
-                    matchup: None,
+                    matchup: pl.Null,
                     "Difficulty": pl.Int8,
                 },
             ),
@@ -168,12 +139,6 @@ def calculate_matchups(matchup: str, spirits: pl.LazyFrame) -> pl.LazyFrame:
     return spirit_matchups.collect(streaming=True).lazy()
 
 
-# %%
-if hasattr(__builtins__, "__IPYTHON__"):
-    matchups = calculate_matchups("Sweden", all_spirits)
-
-
-# %%
 def generate_combinations(
     matchup: str,
     players: int,
@@ -206,7 +171,7 @@ def generate_combinations(
 
     if previous_combos is None:
         msg = "Requires previously generated combos for 2+ players"
-        raise Exception(msg)
+        raise ValueError(msg)
 
     sp_col = f"Spirit_{(players-1)}"
 
@@ -240,15 +205,3 @@ def generate_combinations(
         .sort("NComplexity", descending=True)
         .unique(subset="Hash", keep="first")
     )
-
-
-# %%
-if hasattr(__builtins__, "__IPYTHON__"):
-    combos = generate_combinations(
-        "Sweden",
-        2,
-        matchups,
-        generate_combinations("Sweden", 1, matchups),
-    )
-
-# %%
