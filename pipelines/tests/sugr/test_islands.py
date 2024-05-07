@@ -10,16 +10,16 @@ class TestLooseIslands:
             "Players": [1, 1, 2, 3, 3, 3],
             "Weight": [0.33, 0.66, 1, 0.25, 0.25, 0.5],
             "Standard": [False, True] + [False] * 3 + [True],
-        }
+        },
     )
     boards = pl.LazyFrame(
         {
             "Boards": ["1b1", "3b", "2b", "1b2"],
             "Players": [1, 3, 2, 1],
-        }
+        },
     )
 
-    def test_explode_layouts(self):
+    def test_explode_layouts(self) -> None:
         layouts = (
             uut.explode_layouts(self.layouts, 3)
             .collect(streaming=True)
@@ -32,7 +32,7 @@ class TestLooseIslands:
 
         assert sorted(layouts.keys()) == sorted(["Layout", "Standard"])
 
-    def test_generate_loose_islands(self):
+    def test_generate_loose_islands(self) -> None:
         islands = (
             uut.generate_loose_islands(
                 self.layouts.filter(pl.col("Players") == 1),
@@ -48,7 +48,7 @@ class TestLooseIslands:
                 ("1p1", "1b2"),
                 ("1p2", "1b1"),
                 ("1p2", "1b2"),
-            ]
+            ],
         )
 
         assert (
@@ -56,7 +56,7 @@ class TestLooseIslands:
                 [
                     (islands["Layout"][i], islands["Boards"][i])
                     for i in range(len(islands["Layout"]))
-                ]
+                ],
             )
             == expected
         )

@@ -1,26 +1,33 @@
-from metaflow import FlowSpec, step, conda_base, current, Parameter
-import typing
 import gc
+import typing
+
+from metaflow import (
+    FlowSpec,  # pyright: ignore [reportPrivateImportUsage]
+    Parameter,  # pyright: ignore [reportPrivateImportUsage]
+    conda_base,  # pyright: ignore [reportAttributeAccessIssue]
+    current,  # pyright: ignore [reportPrivateImportUsage]
+    step,  # pyright: ignore [reportPrivateImportUsage]
+)
 
 
 @conda_base(python=">=3.12,<3.13", packages={"polars": ">=0.20.21,<1"})
 class SugrIslandsFlow(FlowSpec):
     param_input = Parameter("input", required=True, type=str)
-    param_temp = Parameter("temp", default="/tmp/sugr/islands")
+    param_keep = Parameter("keep", default=False)
 
     @step
-    def start(self):
+    def start(self) -> None:
         import os
-        from datetime import datetime
         from pathlib import Path
+
         from utilities.working_dir import WorkingDirectory
 
         self.layouts_tsv = Path(typing.cast(str, self.param_input)) / "layouts.tsv"
 
         temp = WorkingDirectory.for_metaflow_run(
-            Path(typing.cast(str, self.param_temp)), typing.cast(int, current.run_id)
+            "sugr-islands",
+            typing.cast(int, current.run_id),
         )
-        Path(temp.file(datetime.now().isoformat())).touch()
         self.output = temp.push_segment("results")
 
         self.ephemeral = temp.push_segment("ephemeral")
@@ -29,29 +36,31 @@ class SugrIslandsFlow(FlowSpec):
         self.next(self.branch_islandtype)
 
     @step
-    def branch_islandtype(self):
+    def branch_islandtype(self) -> None:
         self.next(self.loose_board_islands, self.fixed_board_islands)
 
     @step
-    def loose_board_islands(self):
+    def loose_board_islands(self) -> None:
         self.next(self.fanout_boardcount)
 
     @step
-    def fanout_boardcount(self):
+    def fanout_boardcount(self) -> None:
         self.board_counts = [("4B", 4), ("6B", 6)]
         self.next(self.fanout_players, foreach="board_counts")
 
     @step
-    def fanout_players(self):
+    def fanout_players(self) -> None:
         (self.island_type, self.max_players) = typing.cast(
-            tuple[str, typing.Literal[4, 6]], self.input
+            tuple[str, typing.Literal[4, 6]],
+            self.input,
         )
         self.board_count: typing.Literal[4, 6] = self.max_players
         self.player_partitions = [
             (
                 pc,
                 self.ephemeral.push_partitions(
-                    ("island_type", self.island_type), ("players", pc)
+                    ("island_type", self.island_type),
+                    ("players", pc),
                 ),
             )
             for pc in range(1, self.max_players + 1)
@@ -59,13 +68,15 @@ class SugrIslandsFlow(FlowSpec):
         self.next(self.explode_layouts, foreach="player_partitions")
 
     @step
-    def explode_layouts(self):
+    def explode_layouts(self) -> None:
         import polars as pl
-        from utilities.working_dir import WorkingDirectory
+
         from transformations.sugr.islands import explode_layouts
+        from utilities.working_dir import WorkingDirectory
 
         (self.players, self.partition) = typing.cast(
-            tuple[int, WorkingDirectory], self.input
+            tuple[int, WorkingDirectory],
+            self.input,
         )
 
         (
@@ -76,7 +87,7 @@ class SugrIslandsFlow(FlowSpec):
         self.next(self.generate_board_combinations)
 
     @step
-    def generate_board_combinations(self):
+    def generate_board_combinations(self) -> None:
         from transformations.sugr.islands import generate_board_combinations
 
         (
@@ -90,8 +101,9 @@ class SugrIslandsFlow(FlowSpec):
         self.next(self.generate_loose_islands)
 
     @step
-    def generate_loose_islands(self):
+    def generate_loose_islands(self) -> None:
         import polars as pl
+
         from transformations.sugr.islands import generate_loose_islands
 
         (
@@ -99,7 +111,7 @@ class SugrIslandsFlow(FlowSpec):
                 pl.scan_parquet(self.partition.file("layouts.parquet")),
                 pl.scan_parquet(self.partition.file("boards.parquet")),
             ).sink_parquet(
-                self.output.file(f"{self.island_type}{self.players:02}.parquet")
+                self.output.file(f"{self.island_type}{self.players:02}.parquet"),
             )
         )
 
@@ -107,22 +119,24 @@ class SugrIslandsFlow(FlowSpec):
         self.next(self.collect_players)
 
     @step
-    def collect_players(self, _):
+    def collect_players(self, inputs: typing.Any) -> None:
+        self.merge_artifacts(inputs, include=["ephemeral"])
         self.next(self.collect_boardcount)
 
     @step
-    def collect_boardcount(self, _):
+    def collect_boardcount(self, inputs: typing.Any) -> None:
+        self.merge_artifacts(inputs, include=["ephemeral"])
         self.next(self.join_islandtypes)
 
     @step
-    def fixed_board_islands(self):
+    def fixed_board_islands(self) -> None:
         from transformations.sugr.islands import generate_fixed_islands
 
         # TODO: Make this data driven?
         for p in range(1, 3 + 1):
             (
                 generate_fixed_islands(p).sink_parquet(
-                    self.output.file(f"FB{p:02}_islands.parquet")
+                    self.output.file(f"FB{p:02}_islands.parquet"),
                 )
             )
 
@@ -131,12 +145,16 @@ class SugrIslandsFlow(FlowSpec):
         self.next(self.join_islandtypes)
 
     @step
-    def join_islandtypes(self, _):
+    def join_islandtypes(self, inputs: typing.Any) -> None:
+        self.merge_artifacts(inputs, include=["ephemeral"])
         self.next(self.end)
 
     @step
-    def end(self):
-        pass
+    def end(self) -> None:
+        import shutil
+
+        if not self.param_keep:
+            shutil.rmtree(str(self.ephemeral))
 
 
 if __name__ == "__main__":

@@ -12,6 +12,8 @@
 #     name: python3
 # ---
 
+# ruff: noqa
+
 # %%
 # %conda install polars --yes
 
@@ -22,7 +24,6 @@ import polars as pl
 # %%
 def combine(adversaries: pl.LazyFrame, combos: pl.LazyFrame) -> pl.LazyFrame:
     """Combines spirits and adversaries to create the complete set of games."""
-
     all_combos = (
         combos.clone()
         .drop("Hash", "Difficulty", "Complexity")
@@ -36,7 +37,7 @@ def combine(adversaries: pl.LazyFrame, combos: pl.LazyFrame) -> pl.LazyFrame:
             [
                 pl.col("Difficulty").add(pl.col("Difficulty_right")),
                 pl.col("Complexity").add(pl.col("Complexity_right")),
-            ]
+            ],
         )
         .drop("Difficulty_right", "Complexity_right", "Matchup")
     )
@@ -51,7 +52,6 @@ if hasattr(__builtins__, "__IPYTHON__"):
 # %%
 def define_buckets(all_games: pl.LazyFrame) -> tuple[pl.LazyFrame, pl.LazyFrame]:
     """Find difficulty/complexity ranges to bucket games into."""
-
     (mean, stddev) = (
         all_games.clone()
         .select(
@@ -69,7 +69,7 @@ def define_buckets(all_games: pl.LazyFrame) -> tuple[pl.LazyFrame, pl.LazyFrame]
         .select(pl.col("Difficulty"), pl.col("Complexity"))
         .filter(
             pl.col("Difficulty").gt(min_difficulty)
-            & pl.col("Difficulty").lt(max_difficulty)
+            & pl.col("Difficulty").lt(max_difficulty),
         )
         .with_columns(
             [
@@ -85,7 +85,7 @@ def define_buckets(all_games: pl.LazyFrame) -> tuple[pl.LazyFrame, pl.LazyFrame]
                 .str.to_integer()
                 .cast(pl.Int8)
                 .alias("Complexity Bucket"),
-            ]
+            ],
         )
     )
 
@@ -116,10 +116,8 @@ def define_buckets(all_games: pl.LazyFrame) -> tuple[pl.LazyFrame, pl.LazyFrame]
 if hasattr(__builtins__, "__IPYTHON__"):
     # TODO: Redo harness
     buckets = define_buckets(
-        pl.scan_parquet("../data/temp/1704403407472060/*_games.parquet")
+        pl.scan_parquet("../data/temp/1704403407472060/*_games.parquet"),
     )
-    print(buckets[0].sort("Bucket").collect(streaming=True))
-    print(buckets[1].sort("Bucket").collect(streaming=True))
 
 
 # %%
@@ -130,7 +128,6 @@ def filter_by_bucket(
     games: pl.LazyFrame,
 ) -> pl.LazyFrame:
     """Filter the given set of games to bucket based on difficulty/complexity."""
-
     (diff_min, diff_max) = (
         difficulty.clone()
         .filter(pl.col("Bucket").eq(bucket[0]))
@@ -150,7 +147,7 @@ def filter_by_bucket(
         pl.col("Difficulty").ge(diff_min)
         & pl.col("Difficulty").le(diff_max)
         & pl.col("Complexity").ge(comp_min)
-        & pl.col("Complexity").le(comp_max)
+        & pl.col("Complexity").le(comp_max),
     )
 
 

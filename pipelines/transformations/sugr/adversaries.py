@@ -12,20 +12,24 @@
 #     name: python3
 # ---
 
+# ruff: noqa
+
 # %%
 # %conda install polars --yes
 
 # %%
-import polars as pl
 import typing
+
+import polars as pl
 
 
 # %%
 def adversaries_by_expansions(
-    expansions: int, adversaries: pl.LazyFrame, escalations: pl.LazyFrame
+    expansions: int,
+    adversaries: pl.LazyFrame,
+    escalations: pl.LazyFrame,
 ) -> tuple[pl.LazyFrame, list[str]]:
     """Filter and clean Adversary data and Matchup data, padding if necessary with escalations."""
-
     adversaries = (
         adversaries.clone()
         .filter(pl.col("Expansion").or_(expansions).eq(expansions))
@@ -35,7 +39,7 @@ def adversaries_by_expansions(
                 pl.col("Difficulty").cast(pl.Int8),
                 pl.col("Complexity").cast(pl.Int8),
                 pl.col("Level").cast(pl.Int8),
-            ]
+            ],
         )
         .rename({"Name": "Adversary"})
     )
@@ -51,7 +55,7 @@ def adversaries_by_expansions(
                         [
                             pl.col("Difficulty").cast(pl.Int8),
                             pl.col("Complexity").cast(pl.Int8),
-                        ]
+                        ],
                     )
                 ),
             ],
@@ -77,7 +81,5 @@ if hasattr(__builtins__, "__IPYTHON__"):
         pl.scan_csv("../data/adversaries.tsv", separator="\t"),
         pl.scan_csv("../data/escalations.tsv", separator="\t"),
     )
-    print(all_adversaries.collect(streaming=True))
-    print(matchups)
 
 # %%

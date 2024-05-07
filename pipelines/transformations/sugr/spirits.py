@@ -12,11 +12,12 @@
 #     name: python3
 # ---
 
+# ruff: noqa
+
 # %%
 # %mamba install polars --yes --quiet
 
 # %%
-import typing
 
 import polars as pl
 
@@ -24,7 +25,6 @@ import polars as pl
 # %%
 def spirits_by_expansions(expansions: int, spirits: pl.LazyFrame) -> pl.LazyFrame:
     """Filter, and clean Spirit data."""
-
     spirits = (
         spirits.clone()
         .filter(pl.col("Expansions").or_(expansions).eq(expansions))
@@ -39,12 +39,12 @@ def spirits_by_expansions(expansions: int, spirits: pl.LazyFrame) -> pl.LazyFram
             .when(pl.col("count").gt(1))
             .then(pl.lit("Base"))
             .otherwise(None)
-            .alias("Aspect")
+            .alias("Aspect"),
         )
         .drop("count")
     )
 
-    spirits = (
+    return (
         spirits.join(
             pl.LazyFrame(
                 {
@@ -63,21 +63,18 @@ def spirits_by_expansions(expansions: int, spirits: pl.LazyFrame) -> pl.LazyFram
         .drop("Value")
     )
 
-    return spirits
-
 
 # %%
 if hasattr(__builtins__, "__IPYTHON__"):
     all_spirits = spirits_by_expansions(
-        63, pl.scan_csv("../data/spirits.tsv", separator="\t")
+        63,
+        pl.scan_csv("../data/spirits.tsv", separator="\t"),
     )
-    print(all_spirits.collect(streaming=True))
 
 
 # %%
 def calculate_matchups(matchup: str, spirits: pl.LazyFrame) -> pl.LazyFrame:
     """Calculate the difficulty modifiers and best/worst spirits for the matchup."""
-
     spirit_matchups = (
         spirits.clone()
         .join(
@@ -121,7 +118,7 @@ def calculate_matchups(matchup: str, spirits: pl.LazyFrame) -> pl.LazyFrame:
                     pl.max("Aspect Count"),
                     pl.min("Difficulty"),
                     pl.max("Complexity"),
-                ]
+                ],
             )
             .with_columns(
                 pl.when(pl.col("Aspect Count").eq(0))
@@ -141,7 +138,7 @@ def calculate_matchups(matchup: str, spirits: pl.LazyFrame) -> pl.LazyFrame:
                     pl.col("Aspect"),
                     pl.max("Aspect Count"),
                     pl.max("Complexity"),
-                ]
+                ],
             )
             .filter(pl.col("Difficulty").eq(pl.min("Difficulty").over("Name")))
             .with_columns(
@@ -154,8 +151,8 @@ def calculate_matchups(matchup: str, spirits: pl.LazyFrame) -> pl.LazyFrame:
                             pl.lit(" ("),
                             pl.col("Aspect").list.join(", "),
                             pl.lit(")"),
-                        ]
-                    )
+                        ],
+                    ),
                 )
                 .alias("Spirit"),
             )
@@ -174,7 +171,6 @@ def calculate_matchups(matchup: str, spirits: pl.LazyFrame) -> pl.LazyFrame:
 # %%
 if hasattr(__builtins__, "__IPYTHON__"):
     matchups = calculate_matchups("Sweden", all_spirits)
-    print(matchups.collect(streaming=True))
 
 
 # %%
@@ -182,10 +178,9 @@ def generate_combinations(
     matchup: str,
     players: int,
     matchups: pl.LazyFrame,
-    previous_combos: typing.Optional[pl.LazyFrame] = None,
+    previous_combos: pl.LazyFrame | None = None,
 ) -> pl.LazyFrame:
     """Generate all possible combinations of spirits."""
-
     if players == 1:
         return (
             matchups.clone()
@@ -195,7 +190,7 @@ def generate_combinations(
                     pl.col("Difficulty").cast(pl.Float32).alias("NDifficulty"),
                     pl.col("Complexity").cast(pl.Float32).alias("NComplexity"),
                     pl.col("Spirit").hash().alias("Hash"),
-                ]
+                ],
             )
             .rename({"Spirit": "Spirit_0"})
             .select(
@@ -210,7 +205,8 @@ def generate_combinations(
         )
 
     if previous_combos is None:
-        raise Exception("Requires previously generated combos for 2+ players")
+        msg = "Requires previously generated combos for 2+ players"
+        raise Exception(msg)
 
     sp_col = f"Spirit_{(players-1)}"
 
@@ -232,7 +228,7 @@ def generate_combinations(
                 pl.col("Difficulty").add(pl.col("Difficulty_right")),
                 pl.col("Complexity").add(pl.col("Complexity_right")),
                 pl.col("Hash").add(pl.col("Spirit").hash()),
-            ]
+            ],
         )
         .with_columns(
             pl.col("Difficulty").truediv(players).cast(pl.Float32).alias("NDifficulty"),
@@ -249,8 +245,10 @@ def generate_combinations(
 # %%
 if hasattr(__builtins__, "__IPYTHON__"):
     combos = generate_combinations(
-        "Sweden", 2, matchups, generate_combinations("Sweden", 1, matchups)
+        "Sweden",
+        2,
+        matchups,
+        generate_combinations("Sweden", 1, matchups),
     )
-    print(combos.collect(streaming=True))
 
 # %%

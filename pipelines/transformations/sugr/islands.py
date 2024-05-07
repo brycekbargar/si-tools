@@ -1,9 +1,13 @@
+"""Provides operations on LazyFrames to generate island setups."""
+
 from typing import Literal
+
 import polars as pl
 
 
 def generate_board_combinations(
-    total_boards: Literal[4, 6], players: int
+    total_boards: Literal[4, 6],
+    players: int,
 ) -> pl.LazyFrame:
     """Generates all valid combinations of boards for the number of players."""
     from functools import reduce
@@ -39,7 +43,7 @@ def generate_board_combinations(
 
 
 def explode_layouts(layouts: pl.LazyFrame, players: int) -> pl.LazyFrame:
-    """Takes a given set of layouts/weights and turns them into a randomized, selectable list for the player count."""
+    """Returns a randomized list of layouts based on input weights."""
     import random
 
     player_layouts = (
@@ -49,7 +53,7 @@ def explode_layouts(layouts: pl.LazyFrame, players: int) -> pl.LazyFrame:
     )
 
     return pl.DataFrame(
-        random.choices(
+        random.choices(  # noqa: S311
             player_layouts.select("Layout", "Standard").rows(),
             weights=[r[0] for r in player_layouts.select("Weight").iter_rows()],
             k=100,
@@ -59,7 +63,10 @@ def explode_layouts(layouts: pl.LazyFrame, players: int) -> pl.LazyFrame:
 
 
 def generate_loose_islands(layouts: pl.LazyFrame, boards: pl.LazyFrame) -> pl.LazyFrame:
-    """Generates all possible islands combing layouts + boards. This frame is sorted with the standard layout first."""
+    """Generates all possible islands combing layouts + boards.
+
+    This frame is sorted with the standard layout first.
+    """
     return (
         layouts.clone()
         .join(boards, how="cross")
@@ -106,4 +113,5 @@ def generate_fixed_islands(players: int) -> pl.LazyFrame:
                 ["Layout", "Standard", "Board_0", "Board_1", "Board2"],
             )
 
-    raise Exception("Only 1-3 players are supported on the fixed island board.")
+    msg = "Only 1-3 players are supported on the fixed island board."
+    raise IndexError(msg)

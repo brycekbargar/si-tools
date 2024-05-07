@@ -1,13 +1,15 @@
-from metaflow import FlowSpec, step, conda, conda_base, current
-from pathlib import Path
-import typing
+# ruff: noqa
 import gc
+import typing
+from pathlib import Path
+
+from metaflow import FlowSpec, conda, conda_base, current, step
 
 
 @conda_base(python=">=3.12,<3.13", packages={"polars": ">=0.20.2,<1"})
 class SugrGamesFlow(FlowSpec):
     @step
-    def start(self):
+    def start(self) -> None:
         root = Path("./data")
 
         self.temp = root / "temp" / str(current.run_id)
@@ -23,7 +25,7 @@ class SugrGamesFlow(FlowSpec):
         self.next(self.fanout_expansions)
 
     @step
-    def fanout_expansions(self):
+    def fanout_expansions(self) -> None:
         import polars as pl
 
         self.expansions = (
@@ -38,21 +40,24 @@ class SugrGamesFlow(FlowSpec):
         self.next(self.filter_by_expansions, foreach="expansions")
 
     @step
-    def filter_by_expansions(self):
-        import polars as pl
+    def filter_by_expansions(self) -> None:
         from operator import itemgetter
-        from transformations.sugr_spirits import spirits_by_expansions
+
+        import polars as pl
+
         from transformations.sugr_adversaries import adversaries_by_expansions
+        from transformations.sugr_spirits import spirits_by_expansions
 
         input = itemgetter("Value", "Players")(
-            typing.cast(dict[str, typing.Any], self.input)
+            typing.cast(dict[str, typing.Any], self.input),
         )
         (self.expansions, self.max_players) = typing.cast(tuple[int, int], input)
 
         self.spirits_parquet = self.temp / f"{self.expansions:02}_spirits.parquet"
         (
             spirits_by_expansions(
-                self.expansions, pl.scan_csv(self.spirits_tsv, separator="\t")
+                self.expansions,
+                pl.scan_csv(self.spirits_tsv, separator="\t"),
             )
         ).sink_parquet(self.spirits_parquet, maintain_order=False)
 
@@ -71,12 +76,13 @@ class SugrGamesFlow(FlowSpec):
         self.next(self.fanout_matchups)
 
     @step
-    def fanout_matchups(self):
+    def fanout_matchups(self) -> None:
         self.next(self.calculate_matchups, foreach="matchups")
 
     @step
-    def calculate_matchups(self):
+    def calculate_matchups(self) -> None:
         import polars as pl
+
         from transformations.sugr_spirits import calculate_matchups
 
         self.matchup = typing.cast(str, self.input)
@@ -98,12 +104,13 @@ class SugrGamesFlow(FlowSpec):
         self.next(self.generate_combinations)
 
     @step
-    def generate_combinations(self):
-        from transformations.sugr_spirits import generate_combinations
+    def generate_combinations(self) -> None:
         import polars as pl
 
+        from transformations.sugr_spirits import generate_combinations
+
         self.combinations_parquet = [
-            self.temp / f"{self.expansions:02}_{self.matchup}_01.parquet"
+            self.temp / f"{self.expansions:02}_{self.matchup}_01.parquet",
         ]
         (
             generate_combinations(
@@ -116,7 +123,7 @@ class SugrGamesFlow(FlowSpec):
 
         for players in range(2, self.max_players + 1):
             self.combinations_parquet.append(
-                self.temp / f"{self.expansions:02}_{self.matchup}_{players:02}.parquet"
+                self.temp / f"{self.expansions:02}_{self.matchup}_{players:02}.parquet",
             )
             (
                 generate_combinations(
@@ -131,7 +138,7 @@ class SugrGamesFlow(FlowSpec):
         self.next(self.collect_matchups)
 
     @step
-    def collect_matchups(self, inputs):
+    def collect_matchups(self, inputs) -> None:
         self.merge_artifacts(
             inputs,
             include=[
@@ -153,13 +160,14 @@ class SugrGamesFlow(FlowSpec):
         self.next(self.fanout_players)
 
     @step
-    def fanout_players(self):
+    def fanout_players(self) -> None:
         self.next(self.combine_games, foreach="players")
 
     @step
-    def combine_games(self):
-        from transformations.sugr_games import combine
+    def combine_games(self) -> None:
         import polars as pl
+
+        from transformations.sugr_games import combine
 
         self.players = typing.cast(int, self.input)
 
@@ -175,9 +183,10 @@ class SugrGamesFlow(FlowSpec):
         self.next(self.collect_players)
 
     @step
-    def collect_players(self, inputs):
+    def collect_players(self, inputs) -> None:
         self.merge_artifacts(
-            inputs, include=["expansions_tsv", "temp", "output", "expansions"]
+            inputs,
+            include=["expansions_tsv", "temp", "output", "expansions"],
         )
 
         self.games_parquet_by_players = {i.players: i.games_parquet for i in inputs}
@@ -185,7 +194,7 @@ class SugrGamesFlow(FlowSpec):
         self.next(self.collect_expansions)
 
     @step
-    def collect_expansions(self, inputs):
+    def collect_expansions(self, inputs) -> None:
         self.merge_artifacts(inputs, include=["expansions_tsv", "temp", "output"])
 
         self.games_parquet_by_expansions_and_players = {
@@ -197,9 +206,10 @@ class SugrGamesFlow(FlowSpec):
         self.next(self.define_buckets)
 
     @step
-    def define_buckets(self):
-        from transformations.sugr_games import define_buckets
+    def define_buckets(self) -> None:
         import polars as pl
+
+        from transformations.sugr_games import define_buckets
 
         self.difficulty_parquet = self.temp / "buckets_difficulty.parquet"
         self.complexity_parquet = self.temp / "buckets_complexity.parquet"
@@ -214,7 +224,7 @@ class SugrGamesFlow(FlowSpec):
         self.next(self.fanout_buckets)
 
     @step
-    def fanout_buckets(self):
+    def fanout_buckets(self) -> None:
         import polars as pl
 
         expansions = (
@@ -231,7 +241,7 @@ class SugrGamesFlow(FlowSpec):
                 for d in range(5):
                     for c in range(5):
                         self.buckets.append(
-                            (typing.cast(int, exp["Value"]), players, d, c)
+                            (typing.cast(int, exp["Value"]), players, d, c),
                         )
         del expansions
         gc.collect()
@@ -239,9 +249,10 @@ class SugrGamesFlow(FlowSpec):
         self.next(self.bucket_games, foreach="buckets")
 
     @step
-    def bucket_games(self):
-        from transformations.sugr_games import filter_by_bucket
+    def bucket_games(self) -> None:
         import polars as pl
+
+        from transformations.sugr_games import filter_by_bucket
 
         self.bucket = typing.cast(tuple[int, int, int, int], self.input)
         (expansions, players, difficulty, complexity) = self.bucket
@@ -254,7 +265,7 @@ class SugrGamesFlow(FlowSpec):
                 typing.cast(
                     list[Path],
                     self.games_parquet_by_expansions_and_players[expansions][players],
-                )
+                ),
             ),
         )
 
@@ -278,7 +289,7 @@ class SugrGamesFlow(FlowSpec):
 
     @conda(python=">=3.12,<3.13", packages={"pyarrow": "14.0.2"})
     @step
-    def shorten_utf8(self):
+    def shorten_utf8(self) -> None:
         from largeutf8 import make_longutf8_shorter
 
         make_longutf8_shorter(self.games_parquet, self.games_arrow)
@@ -287,7 +298,7 @@ class SugrGamesFlow(FlowSpec):
         self.next(self.count_games)
 
     @step
-    def count_games(self):
+    def count_games(self) -> None:
         import polars as pl
 
         self.count = (
@@ -301,14 +312,14 @@ class SugrGamesFlow(FlowSpec):
         self.next(self.collect_buckets)
 
     @step
-    def collect_buckets(self, inputs):
+    def collect_buckets(self, inputs) -> None:
         self.merge_artifacts(inputs, include=["temp", "output"])
 
-        self.stats = [list(i.bucket + (i.count,)) for i in inputs]
+        self.stats = [[*i.bucket, i.count] for i in inputs]
         self.next(self.write_stats)
 
     @step
-    def write_stats(self):
+    def write_stats(self) -> None:
         import polars as pl
 
         schema = [
@@ -319,7 +330,7 @@ class SugrGamesFlow(FlowSpec):
             "Count",
         ]
         stats = pl.DataFrame(typing.cast(list[int], self.stats), schema=schema).sort(
-            schema[:-1]
+            schema[:-1],
         )
         stats.write_parquet(self.temp / "stats.parquet")
         stats.write_ipc(self.output / "stats.feather")
@@ -329,7 +340,7 @@ class SugrGamesFlow(FlowSpec):
         self.next(self.end)
 
     @step
-    def end(self):
+    def end(self) -> None:
         pass
 
 

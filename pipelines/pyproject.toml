@@ -29,7 +29,15 @@ flow_islands = "python -m flows.sugr.islands_flow --environment=conda run --inpu
 
 [tool.ruff]
 target-version = "py312"
-lint.fixable = ["ALL"]
+[tool.ruff.lint]
+select = ["ALL"]
+fixable = ["ALL"]
+ignore = ["ANN101", "ANN102", "ANN401", "D105", "FIX002", "PLR2004", "TD002", "TD003"]
+pydocstyle.convention = "google"
+
+[tool.ruff.lint.per-file-ignores]
+"**/tests/*" = ["D", "INP001", "N813", "S101"]
+"**/flows/*" = ["D"]
 
 [tool.pyright]
 typeCheckingMode = "basic"
