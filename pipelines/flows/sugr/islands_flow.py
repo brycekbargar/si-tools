@@ -70,9 +70,9 @@ class SugrIslandsFlow(FlowSpec):
     @step
     def explode_layouts(self) -> None:
         import polars as pl
+        from utilities.working_dir import WorkingDirectory
 
         from transformations.sugr.islands import explode_layouts
-        from utilities.working_dir import WorkingDirectory
 
         (self.players, self.partition) = typing.cast(
             tuple[int, WorkingDirectory],
@@ -120,12 +120,12 @@ class SugrIslandsFlow(FlowSpec):
 
     @step
     def collect_players(self, inputs: typing.Any) -> None:
-        self.merge_artifacts(inputs, include=["ephemeral"])
+        self.merge_artifacts(inputs, include=["ephemeral", "output"])
         self.next(self.collect_boardcount)
 
     @step
     def collect_boardcount(self, inputs: typing.Any) -> None:
-        self.merge_artifacts(inputs, include=["ephemeral"])
+        self.merge_artifacts(inputs, include=["ephemeral", "output"])
         self.next(self.join_islandtypes)
 
     @step
@@ -146,7 +146,7 @@ class SugrIslandsFlow(FlowSpec):
 
     @step
     def join_islandtypes(self, inputs: typing.Any) -> None:
-        self.merge_artifacts(inputs, include=["ephemeral"])
+        self.merge_artifacts(inputs, include=["ephemeral", "output"])
         self.next(self.end)
 
     @step
