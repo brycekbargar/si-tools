@@ -32,7 +32,7 @@ def spirits_by_expansions(expansions: int, spirits: pl.LazyFrame) -> pl.LazyFram
                     "Value": [0, 1, 2, 4],
                 },
                 schema={
-                    "Complexity": pl.Null,
+                    "Complexity": None,
                     "Value": pl.Int8,
                 },
             ),
@@ -64,7 +64,7 @@ def calculate_matchups(matchup: str, spirits: pl.LazyFrame) -> pl.LazyFrame:
                     "Difficulty": [-1, 0, 2, 99, -2, -1, 0, 2],
                 },
                 schema={
-                    matchup: pl.Null,
+                    matchup: None,
                     "Difficulty": pl.Int8,
                 },
             ),
