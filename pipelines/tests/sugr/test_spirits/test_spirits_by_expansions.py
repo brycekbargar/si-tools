@@ -1,6 +1,6 @@
 import polars as pl
 
-import transformations.sugr.spirits as uut
+from transformations.sugr.spirits import spirits_by_expansions as uut
 
 
 def test_spirits_by_expansion() -> None:
@@ -13,11 +13,7 @@ def test_spirits_by_expansion() -> None:
         },
     )
 
-    results = (
-        uut.spirits_by_expansions(1 | 8, spirits)
-        .collect(streaming=True)
-        .to_dict(as_series=False)
-    )
+    results = uut(1 | 8, spirits).collect(streaming=True).to_dict(as_series=False)
 
     # filters by expansion
     assert "S4" not in results["Name"]

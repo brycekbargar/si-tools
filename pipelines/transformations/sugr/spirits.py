@@ -48,6 +48,7 @@ def calculate_matchups(matchup: str, spirits: pl.LazyFrame) -> pl.LazyFrame:
     """Calculate the difficulty modifiers and best/worst spirits for the matchup."""
     spirit_matchups = (
         spirits.clone()
+        .filter(pl.Expr.not_(pl.col(matchup).eq(pl.lit("Unplayable")).not_()))
         .join(
             pl.LazyFrame(
                 {
@@ -55,13 +56,12 @@ def calculate_matchups(matchup: str, spirits: pl.LazyFrame) -> pl.LazyFrame:
                         "Counters",
                         "Neutral",
                         "Unfavored",
-                        "Unplayable",
                         "Top",
                         "Mid+",
                         "Mid-",
                         "Bottom",
                     ],
-                    "Difficulty": [-1, 0, 2, 99, -2, -1, 0, 2],
+                    "Difficulty": [-3, 0, 3, -3, -1, 1, 3],
                 },
                 schema={
                     matchup: None,
@@ -71,63 +71,35 @@ def calculate_matchups(matchup: str, spirits: pl.LazyFrame) -> pl.LazyFrame:
             on=matchup,
             how="left",
         )
-        .select(
-            pl.col("Name"),
-            pl.col("Difficulty"),
-            pl.col("Aspect"),
-            pl.col("Complexity"),
-        )
         .with_columns(pl.col("Aspect").count().over("Name").name.suffix(" Count"))
     )
 
-    if matchup == "Tier":
-        spirit_matchups = (
-            spirit_matchups.clone()
-            .group_by("Name")
-            .agg(
-                [
-                    pl.max("Aspect Count"),
-                    pl.min("Difficulty"),
-                    pl.max("Complexity"),
-                ],
-            )
-            .with_columns(
-                pl.when(pl.col("Aspect Count").eq(0))
-                .then(pl.col("Name"))
-                .otherwise(pl.concat_str([pl.col("Name"), pl.lit(" (Any)")]))
-                .alias("Spirit"),
-            )
+    spirit_matchups = (
+        spirit_matchups.group_by(["Name", "Difficulty"])
+        .agg(
+            [
+                pl.col("Aspect"),
+                pl.max("Aspect Count"),
+                pl.max("Complexity"),
+            ],
         )
-
-    else:
-        spirit_matchups = (
-            spirit_matchups.clone()
-            .filter(pl.Expr.not_(pl.col("Difficulty").eq(99)))
-            .group_by(["Name", "Difficulty"])
-            .agg(
-                [
-                    pl.col("Aspect"),
-                    pl.max("Aspect Count"),
-                    pl.max("Complexity"),
-                ],
+        .filter(pl.col("Difficulty").eq(pl.min("Difficulty").over("Name")))
+        .with_columns(
+            pl.when(pl.col("Aspect Count").eq(0))
+            .then(pl.col("Name"))
+            .otherwise(
+                pl.concat_str(
+                    [
+                        pl.col("Name"),
+                        pl.lit(" ("),
+                        pl.col("Aspect").list.join(", "),
+                        pl.lit(")"),
+                    ],
+                ),
             )
-            .filter(pl.col("Difficulty").eq(pl.min("Difficulty").over("Name")))
-            .with_columns(
-                pl.when(pl.col("Aspect Count").eq(0))
-                .then(pl.col("Name"))
-                .otherwise(
-                    pl.concat_str(
-                        [
-                            pl.col("Name"),
-                            pl.lit(" ("),
-                            pl.col("Aspect").list.join(", "),
-                            pl.lit(")"),
-                        ],
-                    ),
-                )
-                .alias("Spirit"),
-            )
+            .alias("Spirit"),
         )
+    )
 
     spirit_matchups = spirit_matchups.select(
         pl.col("Difficulty"),
