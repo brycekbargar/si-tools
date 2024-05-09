@@ -105,25 +105,22 @@ def calculate_matchups(matchup: str, spirits: pl.LazyFrame) -> pl.LazyFrame:
         pl.col("Difficulty"),
         pl.col("Complexity"),
         pl.col("Spirit"),
-    )
+    ).with_columns(pl.lit(matchup).alias("Matchup"))
 
     # list/string munging isn't supported by sink_parquet as of 0.20.2
     return spirit_matchups.collect(streaming=True).lazy()
 
 
 def generate_combinations(
-    matchup: str,
-    players: int,
     matchups: pl.LazyFrame,
     previous_combos: pl.LazyFrame | None = None,
 ) -> pl.LazyFrame:
     """Generate all possible combinations of spirits."""
-    if players == 1:
+    if previous_combos is None:
         return (
             matchups.clone()
             .with_columns(
                 [
-                    pl.lit(matchup).alias("Matchup"),
                     pl.col("Difficulty").cast(pl.Float32).alias("NDifficulty"),
                     pl.col("Complexity").cast(pl.Float32).alias("NComplexity"),
                     pl.col("Spirit").hash().alias("Hash"),
@@ -141,18 +138,14 @@ def generate_combinations(
             )
         )
 
-    if previous_combos is None:
-        msg = "Requires previously generated combos for 2+ players"
-        raise ValueError(msg)
-
+    players = len([c for c in previous_combos.columns if c.startswith("Spirit")]) + 1
     sp_col = f"Spirit_{(players-1)}"
-
-    def _unique_spirits() -> pl.Expr:
-        spirit_n = pl.col(sp_col)
-        expr = pl.Expr.not_(spirit_n.eq(pl.col("Spirit_0")))
-        for i in range(players - 2, 0, -1):
-            expr = expr.and_(pl.Expr.not_(spirit_n.eq(pl.col(f"Spirit_{i}"))))
-        return expr
+    spirit_n = pl.col(sp_col)
+    unique_spirits = pl.Expr.not_(spirit_n.eq(pl.col("Spirit_0")))
+    for i in range(players - 2, 0, -1):
+        unique_spirits = unique_spirits.and_(
+            pl.Expr.not_(spirit_n.eq(pl.col(f"Spirit_{i}"))),
+        )
 
     return (
         matchups.clone()
@@ -160,20 +153,20 @@ def generate_combinations(
             previous_combos.clone(),
             how="cross",
         )
+        .filter(pl.col("Matchup").eq(pl.col("Matchup_right")))
+        .rename({"Spirit": sp_col})
+        .filter(unique_spirits)
         .with_columns(
             [
                 pl.col("Difficulty").add(pl.col("Difficulty_right")),
                 pl.col("Complexity").add(pl.col("Complexity_right")),
-                pl.col("Hash").add(pl.col("Spirit").hash()),
+                pl.col("Hash").add(pl.col(sp_col).hash()),
             ],
         )
         .with_columns(
             pl.col("Difficulty").truediv(players).cast(pl.Float32).alias("NDifficulty"),
             pl.col("Complexity").truediv(players).cast(pl.Float32).alias("NComplexity"),
         )
-        .rename({"Spirit": sp_col})
-        .drop("Difficulty_right", "Complexity_right")
-        .filter(_unique_spirits())
-        .sort("NComplexity", descending=True)
+        .drop("Difficulty_right", "Complexity_right", "Matchup_right")
         .unique(subset="Hash", keep="first")
     )

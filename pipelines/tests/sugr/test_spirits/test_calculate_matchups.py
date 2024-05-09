@@ -7,6 +7,7 @@ from transformations.sugr.spirits import calculate_matchups as uut
 
 
 def test_calculate_matchups() -> None:
+    matchup = "neiroatra"
     spirits = pl.LazyFrame(
         {
             "Name": ["S1", "S1", "S2", "S2", "S2", "S3", "S4", "S4", "S5", "S5"],
@@ -23,7 +24,7 @@ def test_calculate_matchups() -> None:
                 "S5A2",
             ],
             "Complexity": [1, 2, 1, 2, 3, 0, 0, 0, 0, 0],
-            "Matchup": [
+            matchup: [
                 "Mid+",
                 "Mid+",
                 "Counters",
@@ -38,9 +39,11 @@ def test_calculate_matchups() -> None:
         },
     )
 
-    results = uut("Matchup", spirits).collect(streaming=True).to_dict(as_series=False)
+    results = uut(matchup, spirits).collect(streaming=True).to_dict(as_series=False)
 
     for i in range(len(results["Spirit"])):
+        assert results["Matchup"][i] == matchup
+
         match typing.cast(str, results["Spirit"][i]):
             case s if s.startswith("S1"):
                 # Any is for when all the aspects have the same matchup
