@@ -1,38 +1,13 @@
-# ---
-# jupyter:
-#   jupytext:
-#     text_representation:
-#       extension: .py
-#       format_name: percent
-#       format_version: '1.3'
-#       jupytext_version: 1.16.0
-#   kernelspec:
-#     display_name: Python 3 (ipykernel)
-#     language: python
-#     name: python3
-# ---
+"""Provides operations on LazyFrames finalizing Spirit Island games."""
 
-# ruff: noqa
-
-# %%
-# %conda install polars --yes
-
-# %%
 import polars as pl
 
 
-# %%
 def combine(adversaries: pl.LazyFrame, combos: pl.LazyFrame) -> pl.LazyFrame:
     """Combines spirits and adversaries to create the complete set of games."""
-    all_combos = (
-        combos.clone()
-        .drop("Hash", "Difficulty", "Complexity")
-        .rename({"NDifficulty": "Difficulty", "NComplexity": "Complexity"})
-    )
-
     return (
         adversaries.clone()
-        .join(all_combos, on="Matchup")
+        .join(combos.clone(), on="Matchup")
         .with_columns(
             [
                 pl.col("Difficulty").add(pl.col("Difficulty_right")),
@@ -43,13 +18,6 @@ def combine(adversaries: pl.LazyFrame, combos: pl.LazyFrame) -> pl.LazyFrame:
     )
 
 
-# %%
-if hasattr(__builtins__, "__IPYTHON__"):
-    # TODO: Redo harness
-    pass
-
-
-# %%
 def define_buckets(all_games: pl.LazyFrame) -> tuple[pl.LazyFrame, pl.LazyFrame]:
     """Find difficulty/complexity ranges to bucket games into."""
     (mean, stddev) = (
@@ -94,8 +62,8 @@ def define_buckets(all_games: pl.LazyFrame) -> tuple[pl.LazyFrame, pl.LazyFrame]
         stats.clone()
         .group_by("Difficulty Bucket")
         .agg(
-            pl.min("Difficulty").name.suffix(" Min"),
-            pl.max("Difficulty").name.suffix(" Max"),
+            pl.min("Difficulty").alias("Min"),
+            pl.max("Difficulty").alias("Max"),
         )
         .rename({"Difficulty Bucket": "Bucket"})
         .collect(streaming=True)
@@ -103,8 +71,8 @@ def define_buckets(all_games: pl.LazyFrame) -> tuple[pl.LazyFrame, pl.LazyFrame]
         stats.clone()
         .group_by("Complexity Bucket")
         .agg(
-            pl.min("Complexity").name.suffix(" Min"),
-            pl.max("Complexity").name.suffix(" Max"),
+            pl.min("Complexity").alias("Min"),
+            pl.max("Complexity").alias("Max"),
         )
         .rename({"Complexity Bucket": "Bucket"})
         .collect(streaming=True)
@@ -112,15 +80,6 @@ def define_buckets(all_games: pl.LazyFrame) -> tuple[pl.LazyFrame, pl.LazyFrame]
     )
 
 
-# %%
-if hasattr(__builtins__, "__IPYTHON__"):
-    # TODO: Redo harness
-    buckets = define_buckets(
-        pl.scan_parquet("../data/temp/1704403407472060/*_games.parquet"),
-    )
-
-
-# %%
 def filter_by_bucket(
     bucket: tuple[int, int],
     difficulty: pl.LazyFrame,
@@ -128,20 +87,18 @@ def filter_by_bucket(
     games: pl.LazyFrame,
 ) -> pl.LazyFrame:
     """Filter the given set of games to bucket based on difficulty/complexity."""
-    (diff_min, diff_max) = (
-        difficulty.clone()
-        .filter(pl.col("Bucket").eq(bucket[0]))
-        .select("Difficulty Min", "Difficulty Max")
-        .collect(streaming=True)
-        .row(0)
-    )
-    (comp_min, comp_max) = (
-        complexity.clone()
-        .filter(pl.col("Bucket").eq(bucket[1]))
-        .select("Complexity Min", "Complexity Max")
-        .collect(streaming=True)
-        .row(0)
-    )
+
+    def min_max(of: pl.LazyFrame, bucket: int) -> tuple[int, int]:
+        return (
+            of.clone()
+            .filter(pl.col("Bucket").eq(bucket))
+            .select("Min", "Max")
+            .collect(streaming=True)
+            .row(0)
+        )
+
+    (diff_min, diff_max) = min_max(of=difficulty, bucket=bucket[0])
+    (comp_min, comp_max) = min_max(of=complexity, bucket=bucket[1])
 
     return games.clone().filter(
         pl.col("Difficulty").ge(diff_min)
@@ -149,9 +106,3 @@ def filter_by_bucket(
         & pl.col("Complexity").ge(comp_min)
         & pl.col("Complexity").le(comp_max),
     )
-
-
-# %%
-if hasattr(__builtins__, "__IPYTHON__"):
-    # TODO: Redo harness
-    pass

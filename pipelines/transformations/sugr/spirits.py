@@ -170,3 +170,12 @@ def generate_combinations(
         .drop("Difficulty_right", "Complexity_right", "Matchup_right")
         .unique(subset="Hash", keep="first")
     )
+
+
+def finalize_combinations(combos: pl.LazyFrame) -> pl.LazyFrame:
+    """Cleans the columns used for generating spirit combinations."""
+    return (
+        combos.clone()
+        .drop("Hash", "Difficulty", "Complexity")
+        .rename({"NDifficulty": "Difficulty", "NComplexity": "Complexity"})
+    )
