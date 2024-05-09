@@ -52,14 +52,49 @@ def explode_layouts(layouts: pl.LazyFrame, players: int) -> pl.LazyFrame:
         .collect(streaming=True)
     )
 
-    return pl.DataFrame(
-        random.choices(  # noqa: S311
-            player_layouts.select("Layout", "Standard").rows(),
-            weights=[r[0] for r in player_layouts.select("Weight").iter_rows()],
-            k=100,
-        ),
-        {"Layout": pl.Utf8, "Standard": pl.Boolean},
-    ).lazy()
+    def _generate() -> pl.DataFrame:
+        return pl.DataFrame(
+            random.choices(  # noqa: S311
+                player_layouts.select("Layout", "Standard").rows(),
+                weights=[r[0] for r in player_layouts.select("Weight").iter_rows()],
+                k=100,
+            ),
+            {"Layout": pl.Utf8, "Standard": pl.Boolean},
+        )
+
+    expected = player_layouts.select(
+        pl.col("Layout"),
+        pl.col("Weight").truediv(pl.sum("Weight")).alias("Expected"),
+    ).to_dict(as_series=False)
+
+    tries = 0
+    while tries < 10:
+        possible = _generate()
+        actual = (
+            possible.group_by("Layout")
+            .agg(pl.len().alias("Actual").truediv(pl.lit(100)))
+            .to_dict(as_series=False)
+        )
+
+        within_bounds = True
+        for i in range(len(expected)):
+            if not within_bounds:
+                continue
+
+            layout = expected["Layout"][i]
+            expected_percent = expected["Expected"][i]
+            actual_percent = actual["Actual"][actual["Layout"].index(layout)]
+
+            if abs(expected_percent - actual_percent) >= 0.03:
+                within_bounds = False
+
+        if within_bounds:
+            return possible.lazy()
+
+        tries += 1
+
+    unlucky = f"Wasn't able to generate layout distribution after {tries} tries"
+    raise GeneratorExit(unlucky)
 
 
 def generate_loose_islands(layouts: pl.LazyFrame, boards: pl.LazyFrame) -> pl.LazyFrame:

@@ -11,7 +11,7 @@ def data() -> tuple[pl.LazyFrame, pl.LazyFrame]:
             {
                 "Layout": ["1p1", "1p2", "2p", "3p1", "3p2", "3p3"],
                 "Players": [1, 1, 2, 3, 3, 3],
-                "Weight": [0.33, 0.66, 1, 0.25, 0.25, 0.5],
+                "Weight": [50, 150, 100, 50, 50, 100],
                 "Standard": [False, True] + [False] * 3 + [True],
             },
         ),
@@ -29,9 +29,9 @@ def test_explode_layouts(data: tuple[pl.LazyFrame, pl.LazyFrame]) -> None:
         uut.explode_layouts(data[0], 3).collect(streaming=True).to_dict(as_series=False)
     )
 
-    assert 42 <= sum([lout == "3p3" for lout in layouts["Layout"]]) <= 58
-    assert 17 <= sum([lout == "3p1" for lout in layouts["Layout"]]) <= 33
-    assert 17 <= sum([lout == "3p2" for lout in layouts["Layout"]]) <= 33
+    assert 47 <= sum([lout == "3p3" for lout in layouts["Layout"]]) <= 53
+    assert 22 <= sum([lout == "3p1" for lout in layouts["Layout"]]) <= 28
+    assert 22 <= sum([lout == "3p2" for lout in layouts["Layout"]]) <= 38
 
     assert sorted(layouts.keys()) == sorted(["Layout", "Standard"])
 
