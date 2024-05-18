@@ -1,26 +1,42 @@
-# ruff: noqa
 import gc
 import typing
-from pathlib import Path
 
-from metaflow import FlowSpec, conda, conda_base, current, step
+from metaflow import (
+    FlowSpec,  # pyright: ignore [reportPrivateImportUsage]
+    Parameter,  # pyright: ignore [reportPrivateImportUsage]
+    conda_base,  # pyright: ignore [reportAttributeAccessIssue]
+    current,  # pyright: ignore [reportPrivateImportUsage]
+    step,  # pyright: ignore [reportPrivateImportUsage]
+)
 
 
 @conda_base(python=">=3.12,<3.13", packages={"polars": ">=0.20.2,<1"})
 class SugrGamesFlow(FlowSpec):
+    param_input = Parameter("input", required=True, type=str)
+    param_keep = Parameter("keep", default=False)
+
     @step
     def start(self) -> None:
-        root = Path("./data")
+        import os
+        from pathlib import Path
 
-        self.temp = root / "temp" / str(current.run_id)
-        self.output = root / "results" / str(current.run_id)
-        Path(self.temp).mkdir(parents=True, exist_ok=True)
-        Path(self.output).mkdir(parents=True, exist_ok=True)
+        from utilities.working_dir import WorkingDirectory
 
-        self.expansions_tsv = root / "expansions.tsv"
-        self.spirits_tsv = root / "spirits.tsv"
-        self.adversaries_tsv = root / "adversaries.tsv"
-        self.escalations_tsv = root / "escalations.tsv"
+        input_dir = Path(typing.cast(str, self.param_input))
+        self.layouts_tsv = input_dir / "layouts.tsv"
+        self.expansions_tsv = input_dir / "expansions.tsv"
+        self.spirits_tsv = input_dir / "spirits.tsv"
+        self.adversaries_tsv = input_dir / "adversaries.tsv"
+        self.escalations_tsv = input_dir / "escalations.tsv"
+
+        temp = WorkingDirectory.for_metaflow_run(
+            "sugr-games",
+            typing.cast(int, current.run_id),
+        )
+        self.output = temp.push_segment("results")
+
+        self.ephemeral = temp.push_segment("ephemeral")
+        os.environ["POLARS_TEMP_DIR"] = str(self.ephemeral.push_segment("polars"))
 
         self.next(self.fanout_expansions)
 
@@ -28,320 +44,238 @@ class SugrGamesFlow(FlowSpec):
     def fanout_expansions(self) -> None:
         import polars as pl
 
-        self.expansions = (
+        expansions = (
             pl.scan_csv(self.expansions_tsv, separator="\t")
-            # .filter(pl.col("Value").is_in([1, 2, 13, 17]))
             .filter(pl.col("Value").is_in([1, 2, 13, 31]))
             .collect(streaming=True)
             .rows(named=True)
         )
 
+        self.expansion_partitions = [
+            (
+                typing.cast(int, e["Value"]),
+                typing.cast(int, e["Players"]),
+                self.ephemeral.push_partitions(("expansion", e["Value"])),
+            )
+            for e in expansions
+        ]
+
         gc.collect()
-        self.next(self.filter_by_expansions, foreach="expansions")
+        self.next(self.filter_by_expansion, foreach="expansion_partitions")
 
     @step
-    def filter_by_expansions(self) -> None:
-        from operator import itemgetter
-
+    def filter_by_expansion(self) -> None:
         import polars as pl
+        from utilities.working_dir import WorkingDirectory
 
-        from transformations.sugr_adversaries import adversaries_by_expansions
-        from transformations.sugr_spirits import spirits_by_expansions
-
-        input = itemgetter("Value", "Players")(
-            typing.cast(dict[str, typing.Any], self.input),
+        from transformations.sugr.adversaries import adversaries_by_expansions
+        from transformations.sugr.spirits import (
+            calculate_matchups,
+            spirits_by_expansions,
         )
-        (self.expansions, self.max_players) = typing.cast(tuple[int, int], input)
 
-        self.spirits_parquet = self.temp / f"{self.expansions:02}_spirits.parquet"
-        (
-            spirits_by_expansions(
-                self.expansions,
-                pl.scan_csv(self.spirits_tsv, separator="\t"),
-            )
-        ).sink_parquet(self.spirits_parquet, maintain_order=False)
-
-        self.adversaries_parquet = (
-            self.temp / f"{self.expansions:02}_adversaries.parquet"
+        (self.expansion, self.max_players, self.expansion_partition) = typing.cast(
+            tuple[int, int, WorkingDirectory],
+            self.input,
         )
-        (adversaries, self.matchups) = adversaries_by_expansions(
-            self.expansions,
+
+        (adversaries, matchups) = adversaries_by_expansions(
+            self.expansion,
             pl.scan_csv(self.adversaries_tsv, separator="\t"),
             pl.scan_csv(self.escalations_tsv, separator="\t"),
         )
-        adversaries.sink_parquet(self.adversaries_parquet)
+        adversaries.sink_parquet(
+            self.expansion_partition.file("adversaries.parquet"),
+            maintain_order=False,
+        )
         del adversaries
 
-        gc.collect()
-        self.next(self.fanout_matchups)
-
-    @step
-    def fanout_matchups(self) -> None:
-        self.next(self.calculate_matchups, foreach="matchups")
-
-    @step
-    def calculate_matchups(self) -> None:
-        import polars as pl
-
-        from transformations.sugr_spirits import calculate_matchups
-
-        self.matchup = typing.cast(str, self.input)
-
-        self.spirits_matchups_parquet = (
-            self.temp / f"{self.expansions:02}_{self.matchup}_spirits.parquet"
+        spirits = spirits_by_expansions(
+            self.expansion,
+            pl.scan_csv(self.spirits_tsv, separator="\t"),
         )
-        (
-            calculate_matchups(
-                self.matchup,
-                pl.scan_parquet(self.spirits_parquet),
-            )
-        ).sink_parquet(
-            self.spirits_matchups_parquet,
+        spirits.sink_parquet(
+            self.expansion_partition.file("spirits.parquet"),
             maintain_order=False,
         )
 
-        gc.collect()
-        self.next(self.generate_combinations)
-
-    @step
-    def generate_combinations(self) -> None:
-        import polars as pl
-
-        from transformations.sugr_spirits import generate_combinations
-
-        self.combinations_parquet = [
-            self.temp / f"{self.expansions:02}_{self.matchup}_01.parquet",
-        ]
-        (
-            generate_combinations(
-                self.matchup,
-                1,
-                pl.scan_parquet(self.spirits_matchups_parquet),
-            )
-        ).sink_parquet(self.combinations_parquet[0], maintain_order=False)
-        gc.collect()
-
-        for players in range(2, self.max_players + 1):
-            self.combinations_parquet.append(
-                self.temp / f"{self.expansions:02}_{self.matchup}_{players:02}.parquet",
-            )
+        for matchup in matchups:
             (
-                generate_combinations(
-                    self.matchup,
-                    players,
-                    pl.scan_parquet(self.spirits_matchups_parquet),
-                    pl.scan_parquet(self.combinations_parquet[-2]),
+                calculate_matchups(
+                    matchup,
+                    spirits,
                 )
-            ).sink_parquet(self.combinations_parquet[-1], maintain_order=False)
-            gc.collect()
+            ).sink_parquet(
+                self.expansion_partition.file(f"matchup_{matchup}.parquet"),
+                maintain_order=False,
+            )
+        del spirits
 
-        self.next(self.collect_matchups)
-
-    @step
-    def collect_matchups(self, inputs) -> None:
-        self.merge_artifacts(
-            inputs,
-            include=[
-                "expansions_tsv",
-                "temp",
-                "output",
-                "expansions",
-                "adversaries_parquet",
-            ],
-        )
-
-        self.combinations_parquet = {}
-        for p in range(len(inputs[0].combinations_parquet)):
-            self.combinations_parquet[p + 1] = [
-                i.combinations_parquet[p] for i in inputs
-            ]
-
-        self.players = list(self.combinations_parquet.keys())
+        gc.collect()
         self.next(self.fanout_players)
 
     @step
     def fanout_players(self) -> None:
-        self.next(self.combine_games, foreach="players")
+        self.player_partitions = [
+            (
+                pc - 1,
+                self.expansion_partition.push_partitions(
+                    ("players", pc),
+                ),
+            )
+            for pc in range(1, self.max_players + 1)
+        ]
+        self.next(self.generate_combinations, foreach="player_partitions")
+
+    @step
+    def generate_combinations(self) -> None:
+        import polars as pl
+        from utilities.working_dir import WorkingDirectory
+
+        from transformations.sugr.spirits import generate_combinations
+
+        (pindex, self.player_partition) = typing.cast(
+            tuple[int, WorkingDirectory],
+            self.input,
+        )
+
+        for i in range(pindex):
+            if i == 0:
+                combinations = generate_combinations(
+                    pl.scan_parquet(
+                        self.expansion_partition.file("matchup_*.parquet"),
+                    ),
+                )
+                continue
+
+            combinations = generate_combinations(
+                pl.scan_parquet(
+                    self.expansion_partition.file("matchup_*.parquet"),
+                ),
+                combinations,
+            )
+
+        combinations.sink_parquet(
+            self.player_partition.file("combinations.parquet"),
+            maintain_order=False,
+        )
+        del combinations
+
+        gc.collect()
+        self.next(self.combine_games)
 
     @step
     def combine_games(self) -> None:
         import polars as pl
 
-        from transformations.sugr_games import combine
+        from transformations.sugr.games import combine
 
-        self.players = typing.cast(int, self.input)
-
-        self.games_parquet = (
-            self.temp / f"{self.expansions:02}_{self.players:02}_games.parquet"
-        )
         combine(
-            pl.scan_parquet(self.adversaries_parquet),
-            pl.scan_parquet(self.combinations_parquet[self.players]),
-        ).sink_parquet(self.games_parquet, maintain_order=False)
-        gc.collect()
+            pl.scan_parquet(self.expansion_partition.file("adversaries.parquet")),
+            pl.scan_parquet(self.player_partition.file("combinations.parquet")),
+        ).sink_parquet(
+            self.player_partition.file("games.parquet"),
+            maintain_order=False,
+        )
 
+        gc.collect()
         self.next(self.collect_players)
 
     @step
-    def collect_players(self, inputs) -> None:
+    def collect_players(self, inputs: typing.Any) -> None:
         self.merge_artifacts(
             inputs,
-            include=["expansions_tsv", "temp", "output", "expansions"],
+            include=["ephemeral", "output", "expansion_partitions"],
         )
-
-        self.games_parquet_by_players = {i.players: i.games_parquet for i in inputs}
-        self.games_parquet = [i.games_parquet for i in inputs]
         self.next(self.collect_expansions)
 
     @step
-    def collect_expansions(self, inputs) -> None:
-        self.merge_artifacts(inputs, include=["expansions_tsv", "temp", "output"])
-
-        self.games_parquet_by_expansions_and_players = {
-            i.expansions: i.games_parquet_by_players for i in inputs
-        }
-        self.games_parquet = [
-            g for games in [i.games_parquet for i in inputs] for g in games
-        ]
+    def collect_expansions(self, inputs: typing.Any) -> None:
+        self.merge_artifacts(
+            inputs,
+            include=["ephemeral", "output", "expansion_partitions"],
+        )
         self.next(self.define_buckets)
 
     @step
     def define_buckets(self) -> None:
         import polars as pl
 
-        from transformations.sugr_games import define_buckets
+        from transformations.sugr.games import define_buckets
 
-        self.difficulty_parquet = self.temp / "buckets_difficulty.parquet"
-        self.complexity_parquet = self.temp / "buckets_complexity.parquet"
+        self.buckets = self.ephemeral.push_segment("buckets")
 
-        (difficulty, complexity) = define_buckets(pl.scan_parquet(self.games_parquet))
-        difficulty.sink_parquet(self.difficulty_parquet, maintain_order=False)
-        complexity.sink_parquet(self.complexity_parquet, maintain_order=False)
+        games_parquet = self.ephemeral.glob_partitions(
+            "expansion",
+            "players",
+        ).file("games.parquet")
 
-        del difficulty, complexity
+        (self.difficulty, self.complexity) = define_buckets(
+            pl.scan_parquet(games_parquet),
+        )
+
         gc.collect()
-
         self.next(self.fanout_buckets)
 
     @step
     def fanout_buckets(self) -> None:
-        import polars as pl
-
-        expansions = (
-            pl.scan_csv(self.expansions_tsv, separator="\t")
-            # .filter(pl.col("Value").is_in([1, 2, 13, 17]))
-            .filter(pl.col("Value").is_in([1, 2, 13, 31]))
-            .collect(streaming=True)
-            .rows(named=True)
-        )
-
-        self.buckets = []
-        for exp in typing.cast(list[dict[str, typing.Any]], expansions):
-            for players in range(1, exp["Players"] + 1):
+        self.bucket_partitions = []
+        for expansion, max_players, _ in self.expansion_partitions:
+            for players in range(1, max_players + 1):
                 for d in range(5):
                     for c in range(5):
-                        self.buckets.append(
-                            (typing.cast(int, exp["Value"]), players, d, c),
+                        self.bucket_partitions.append(
+                            (
+                                (d, c),
+                                self.ephemeral.push_partitions(
+                                    ("expansion", expansion),
+                                    ("players", players),
+                                ).file("games.parquet"),
+                                self.output.push_partitions(
+                                    ("expansion", expansion),
+                                    ("players", players),
+                                    ("difficulty", d),
+                                    ("complexity", c),
+                                ).file("games.parquet"),
+                            ),
                         )
-        del expansions
-        gc.collect()
 
-        self.next(self.bucket_games, foreach="buckets")
+        self.next(self.bucket_games, foreach="bucket_partitions")
 
     @step
     def bucket_games(self) -> None:
         import polars as pl
 
-        from transformations.sugr_games import filter_by_bucket
+        from transformations.sugr.games import filter_by_bucket
 
-        self.bucket = typing.cast(tuple[int, int, int, int], self.input)
-        (expansions, players, difficulty, complexity) = self.bucket
-
-        games = filter_by_bucket(
-            (difficulty, complexity),
-            pl.scan_parquet(self.difficulty_parquet),
-            pl.scan_parquet(self.complexity_parquet),
-            pl.scan_parquet(
-                typing.cast(
-                    list[Path],
-                    self.games_parquet_by_expansions_and_players[expansions][players],
-                ),
-            ),
+        (bucket, source, output) = typing.cast(
+            tuple[tuple[int, int], str, str],
+            self.input,
         )
 
-        self.games_parquet = (
-            self.temp
-            / f"{expansions:02}{players:02}{difficulty:02}{complexity:02}_games.parquet"
-        )
-        games.sink_parquet(self.games_parquet, maintain_order=False)
-        self.games_arrow = (
-            self.output
-            / f"{expansions:02}{players:02}{difficulty:02}{complexity:02}_games.feather"
-        )
-        # The JS implementation of arrow can't handle large_strings as of 14.0.2
-        # The next release probably has it: https://github.com/apache/arrow/pull/35780
-        # Until then we have to convert to short strings
-        # games.sink_ipc(self.games_arrow, maintain_order=False)
-
-        del games
-        gc.collect()
-        self.next(self.shorten_utf8)
-
-    @conda(python=">=3.12,<3.13", packages={"pyarrow": "14.0.2"})
-    @step
-    def shorten_utf8(self) -> None:
-        from largeutf8 import make_longutf8_shorter
-
-        make_longutf8_shorter(self.games_parquet, self.games_arrow)
-
-        gc.collect()
-        self.next(self.count_games)
-
-    @step
-    def count_games(self) -> None:
-        import polars as pl
-
-        self.count = (
-            pl.scan_parquet(self.games_parquet)
-            .select(pl.count())
-            .collect(streaming=True)
-            .item()
-        )
+        (
+            filter_by_bucket(
+                bucket,
+                self.difficulty,
+                self.complexity,
+                pl.scan_parquet(source),
+            )
+        ).sink_parquet(output, maintain_order=False)
 
         gc.collect()
         self.next(self.collect_buckets)
 
     @step
-    def collect_buckets(self, inputs) -> None:
-        self.merge_artifacts(inputs, include=["temp", "output"])
-
-        self.stats = [[*i.bucket, i.count] for i in inputs]
-        self.next(self.write_stats)
-
-    @step
-    def write_stats(self) -> None:
-        import polars as pl
-
-        schema = [
-            "Expansions",
-            "Players",
-            "Difficulty",
-            "Complexity",
-            "Count",
-        ]
-        stats = pl.DataFrame(typing.cast(list[int], self.stats), schema=schema).sort(
-            schema[:-1],
-        )
-        stats.write_parquet(self.temp / "stats.parquet")
-        stats.write_ipc(self.output / "stats.feather")
-        del stats
-        gc.collect()
-
+    def collect_buckets(self, inputs: typing.Any) -> None:
+        self.merge_artifacts(inputs, include=["ephemeral", "output"])
         self.next(self.end)
 
     @step
     def end(self) -> None:
-        pass
+        import shutil
+
+        if not self.param_keep:
+            shutil.rmtree(str(self.ephemeral))
 
 
 if __name__ == "__main__":
