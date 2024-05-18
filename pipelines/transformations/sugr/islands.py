@@ -68,7 +68,7 @@ def explode_layouts(layouts: pl.LazyFrame, players: int) -> pl.LazyFrame:
     ).to_dict(as_series=False)
 
     tries = 0
-    while tries < 10:
+    while tries < 50:
         possible = _generate()
         actual = (
             possible.group_by("Layout")
@@ -77,7 +77,7 @@ def explode_layouts(layouts: pl.LazyFrame, players: int) -> pl.LazyFrame:
         )
 
         within_bounds = True
-        for i in range(len(expected)):
+        for i in range(len(expected["Layout"])):
             if not within_bounds:
                 continue
 

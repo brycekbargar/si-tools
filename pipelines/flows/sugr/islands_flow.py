@@ -6,6 +6,7 @@ from metaflow import (
     Parameter,  # pyright: ignore [reportPrivateImportUsage]
     conda_base,  # pyright: ignore [reportAttributeAccessIssue]
     current,  # pyright: ignore [reportPrivateImportUsage]
+    retry,  # pyright: ignore [reportAttributeAccessIssue]
     step,  # pyright: ignore [reportPrivateImportUsage]
 )
 
@@ -31,7 +32,9 @@ class SugrIslandsFlow(FlowSpec):
         self.output = temp.push_segment("results")
 
         self.ephemeral = temp.push_segment("ephemeral")
-        os.environ["POLARS_TEMP_DIR"] = str(self.ephemeral.push_segment("polars"))
+        os.environ["POLARS_TEMP_DIR"] = self.ephemeral.push_segment(
+            "polars",
+        ).directory()
 
         self.next(self.branch_islandtype)
 
@@ -67,6 +70,7 @@ class SugrIslandsFlow(FlowSpec):
         ]
         self.next(self.explode_layouts, foreach="player_partitions")
 
+    @retry
     @step
     def explode_layouts(self) -> None:
         import polars as pl

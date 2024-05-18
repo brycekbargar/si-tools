@@ -1,7 +1,7 @@
 """Abstracts away file path operations."""
 
 import datetime as dt
-import re
+from functools import reduce
 from pathlib import Path
 from tempfile import mkdtemp
 from typing import Any
@@ -41,24 +41,33 @@ class WorkingDirectory:
         The subdirectory name will be based on the passed key/value pairs
         allowing for partitioning data based on its content.
         """
-        return WorkingDirectory(
-            self._path / "&".join([f"{k}={v!s}" for (k, v) in args]),
+        return reduce(
+            lambda prev, part: WorkingDirectory(prev._path / f"{part[0]}={part[1]!s}"),  # noqa: SLF001
+            args,
+            self,
         )
 
-    def glob_keys(self, file_glob: str, *args: str) -> str:
+    def glob_partitions(self, *args: str) -> "WorkingDirectory":
         """Gets the current WorkingDirectory + given file_glob as a string.
 
         Passing keys will additionally glob the value of those keys
         if they exist in the partitioning scheme.
         """
-        glob = str(self._path / file_glob)
-        for k in args:
-            glob = re.sub(rf"({k})=\w*", r"\1=*", glob)
-        return glob
+        return reduce(
+            lambda prev, key: WorkingDirectory(prev._path / f"{key}=*"),  # noqa: SLF001
+            args,
+            self,
+        )
 
     def file(self, file: str) -> str:
         """Gets the current WorkingDirectory + given file as a string."""
         return str(self._path / file)
+
+    def directory(self, directory: str | None = None) -> str:
+        """Gets the current WorkingDirectory + given directory as a string."""
+        return str((self._path if directory is None else self._path / directory) / "_")[
+            :-1
+        ]
 
     def __str__(self) -> str:
         return str(self._path)
