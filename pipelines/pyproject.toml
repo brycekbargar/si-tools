@@ -21,6 +21,7 @@ distribution = false
 dev = [
     "ruff>=0.3.7",
     "pytest>=8.1.1",
+    "pytest-cases>=3.8.5",
 ]
 
 [tool.pdm.scripts]

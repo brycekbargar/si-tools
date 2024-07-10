@@ -5,7 +5,7 @@
 groups = ["default", "dev"]
 strategy = ["cross_platform", "inherit_metadata"]
 lock_version = "4.4.1"
-content_hash = "sha256:4280c9d492db2f7a234abc8cdd2ddf2e55ade94d07198d39b664f7a33e91b32f"
+content_hash = "sha256:cb68cb9ec6b5f3980a8a2b9552d1504ef4acbd35530462d7cb3b173bdd1c825d"
 
 [[package]]
 name = "astroid"
@@ -100,6 +100,19 @@ files = [
 ]
 
 [[package]]
+name = "decopatch"
+version = "1.4.10"
+summary = "Create decorators easily in python."
+groups = ["dev"]
+dependencies = [
+    "makefun>=1.5.0",
+]
+files = [
+    {file = "decopatch-1.4.10-py2.py3-none-any.whl", hash = "sha256:e151f7f93de2b1b3fd3f3272dcc7cefd1a69f68ec1c2d8e288ecd9deb36dc5f7"},
+    {file = "decopatch-1.4.10.tar.gz", hash = "sha256:957f49c93f4150182c23f8fb51d13bb3213e0f17a79e09c8cca7057598b55720"},
+]
+
+[[package]]
 name = "dill"
 version = "0.3.8"
 requires_python = ">=3.8"
@@ -153,6 +166,16 @@ groups = ["default"]
 files = [
     {file = "jmespath-1.0.1-py3-none-any.whl", hash = "sha256:02e2e4cc71b5bcab88332eebf907519190dd9e6e82107fa7f83b1003a6252980"},
     {file = "jmespath-1.0.1.tar.gz", hash = "sha256:90261b206d6defd58fdd5e85f478bf633a2901798906be2ad389150c5c60edbe"},
+]
+
+[[package]]
+name = "makefun"
+version = "1.15.3"
+summary = "Small library to dynamically create python functions."
+groups = ["dev"]
+files = [
+    {file = "makefun-1.15.3-py2.py3-none-any.whl", hash = "sha256:2d692b46c284db54a54897fa3df3b2443b39eb6711bd7c7d2149322bffca0cc3"},
+    {file = "makefun-1.15.3.tar.gz", hash = "sha256:72039743135dd44ba5037d08e9c6fe4b29dfee7f2eb8106951f9a20ca7d6d1fa"},
 ]
 
 [[package]]
@@ -264,6 +287,21 @@ dependencies = [
 files = [
     {file = "pytest-8.1.1-py3-none-any.whl", hash = "sha256:2a8386cfc11fa9d2c50ee7b2a57e7d898ef90470a7a34c4b949ff59662bb78b7"},
     {file = "pytest-8.1.1.tar.gz", hash = "sha256:ac978141a75948948817d360297b7aae0fcb9d6ff6bc9ec6d514b85d5a65c044"},
+]
+
+[[package]]
+name = "pytest-cases"
+version = "3.8.5"
+summary = "Separate test code from test cases in pytest."
+groups = ["dev"]
+dependencies = [
+    "decopatch",
+    "makefun>=1.15.1",
+    "packaging",
+]
+files = [
+    {file = "pytest-cases-3.8.5.tar.gz", hash = "sha256:c92054187847a7d30d8ab6709fb1670a830e4e19234be700c85c96b6d7102c16"},
+    {file = "pytest_cases-3.8.5-py2.py3-none-any.whl", hash = "sha256:0c8e3727f6494e65b47321adbd94c767277c7b5de1bd40dd518a13f7443b1fff"},
 ]
 
 [[package]]
