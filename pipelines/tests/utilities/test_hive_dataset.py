@@ -87,20 +87,18 @@ def test_write(
     results: list[tuple[str, int]] | type,
 ) -> None:
     with tempfile.TemporaryDirectory() as tmpdir:
-        base = Path(tmpdir)
-
         name = str(uuid4())
-        dataset = uut(name, *keys)
+        dataset = uut(tmpdir, name, *keys)
 
         if isinstance(results, type):
             with pytest.raises(results):  # type: ignore[reportArgumentType]
-                dataset.write(base, WriteCases.frame, **part)
+                dataset.write(WriteCases.frame, **part)
             return
 
-        dataset.write(base, WriteCases.frame, **part)
+        dataset.write(WriteCases.frame, **part)
 
         for path, height in results:
-            partition = base / name / path
+            partition = Path(tmpdir) / name / path
             assert partition.exists()
             files = 0
             for file in partition.iterdir():

@@ -32,8 +32,6 @@ def test_explode_layouts(data: tuple[pl.LazyFrame, pl.LazyFrame]) -> None:
     assert 22 <= sum([lout == "3p1" for lout in layouts["Layout"]]) <= 28
     assert 22 <= sum([lout == "3p2" for lout in layouts["Layout"]]) <= 38
 
-    assert sorted(layouts.keys()) == sorted(["Layout"])
-
 
 def test_generate_loose_islands(data: tuple[pl.LazyFrame, pl.LazyFrame]) -> None:
     islands = (

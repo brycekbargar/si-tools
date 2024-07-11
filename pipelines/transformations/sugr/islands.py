@@ -44,10 +44,14 @@ def generate_board_combinations(
             and (c[0] & 0b10000001 != 0b10000001)
         ]
 
-    return pl.LazyFrame(
-        [[boards[b] for b in c[1]] for c in combos],
-        {f"Board_{p}": pl.Utf8 for p in range(players)},
-    ).with_columns(pl.lit(players).cast(pl.UInt8).alias("Players"))
+    return (
+        pl.LazyFrame(
+            [[boards[b] for b in c[1]] for c in combos],
+            {f"Board_{p}": pl.Utf8 for p in range(players)},
+        )
+        .with_columns(pl.lit(players).cast(pl.UInt8).alias("Players"))
+        .with_columns(pl.lit(f"{total_boards}B").alias("Type"))
+    )
 
 
 def explode_layouts(layouts: pl.LazyFrame, players: int) -> pl.LazyFrame:
@@ -68,7 +72,7 @@ def explode_layouts(layouts: pl.LazyFrame, players: int) -> pl.LazyFrame:
                 k=100,
             ),
             {"Layout": pl.Utf8},
-        )
+        ).with_columns(pl.lit(players).cast(pl.UInt8).alias("Players"))
 
     expected = player_layouts.select(
         pl.col("Layout"),
@@ -107,47 +111,51 @@ def explode_layouts(layouts: pl.LazyFrame, players: int) -> pl.LazyFrame:
 
 def generate_loose_islands(layouts: pl.LazyFrame, boards: pl.LazyFrame) -> pl.LazyFrame:
     """Generates all possible islands combing layouts + boards."""
-    return layouts.clone().join(boards, how="cross")
+    #  TODO: Remove this casting hack
+    return layouts.clone().join(boards.cast({"Players": pl.UInt8}), on="Players")
 
 
 def generate_fixed_islands(players: int) -> pl.LazyFrame:
     """Hackily generates layouts + boards for Horizons only games."""
+    frame: pl.LazyFrame
     match players:
         case 1:
-            return pl.LazyFrame(
+            frame = pl.LazyFrame(
                 [
-                    ["Three-Player Side", "F"],
-                    ["Three-Player Side", "G"],
-                    ["Three-Player Side", "H"],
+                    ["FB", 1, "Three-Player Side", "F"],
+                    ["FB", 1, "Three-Player Side", "G"],
+                    ["FB", 1, "Three-Player Side", "H"],
                 ],
-                ["Layout", "Board_0"],
+                ["Type", "Players", "Layout", "Board_0"],
             )
         case 2:
             return pl.LazyFrame(
                 [
-                    ["Three-Player Side", "F", "G"],
-                    ["Three-Player Side", "F", "H"],
-                    ["Three-Player Side", "G", "F"],
-                    ["Three-Player Side", "G", "H"],
-                    ["Three-Player Side", "H", "F"],
-                    ["Three-Player Side", "H", "G"],
-                    ["Two-Player Side", "G", "H"],
-                    ["Two-Player Side", "H", "G"],
+                    ["FB", 2, "Three-Player Side", "F", "G"],
+                    ["FB", 2, "Three-Player Side", "F", "H"],
+                    ["FB", 2, "Three-Player Side", "G", "F"],
+                    ["FB", 2, "Three-Player Side", "G", "H"],
+                    ["FB", 2, "Three-Player Side", "H", "F"],
+                    ["FB", 2, "Three-Player Side", "H", "G"],
+                    ["FB", 2, "Two-Player Side", "G", "H"],
+                    ["FB", 2, "Two-Player Side", "H", "G"],
                 ],
-                ["Layout", "Board_0", "Board_1"],
+                ["Type", "Players", "Layout", "Board_0", "Board_1"],
             )
         case 3:
             return pl.LazyFrame(
                 [
-                    ["Three-Player Side", "F", "G", "H"],
-                    ["Three-Player Side", "F", "H", "G"],
-                    ["Three-Player Side", "G", "F", "H"],
-                    ["Three-Player Side", "G", "H", "F"],
-                    ["Three-Player Side", "H", "F", "G"],
-                    ["Three-Player Side", "H", "G", "F"],
+                    ["FB", 3, "Three-Player Side", "F", "G", "H"],
+                    ["FB", 3, "Three-Player Side", "F", "H", "G"],
+                    ["FB", 3, "Three-Player Side", "G", "F", "H"],
+                    ["FB", 3, "Three-Player Side", "G", "H", "F"],
+                    ["FB", 3, "Three-Player Side", "H", "F", "G"],
+                    ["FB", 3, "Three-Player Side", "H", "G", "F"],
                 ],
-                ["Layout", "Board_0", "Board_1", "Board2"],
+                ["Type", "Players", "Layout", "Board_0", "Board_1", "Board2"],
             )
+        case _:
+            msg = "Only 1-3 players are supported on the fixed island board."
+            raise IndexError(msg)
 
-    msg = "Only 1-3 players are supported on the fixed island board."
-    raise IndexError(msg)
+    return frame.cast({"Players": pl.UInt8})
