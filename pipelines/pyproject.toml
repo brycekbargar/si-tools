@@ -19,8 +19,8 @@ distribution = false
 
 [tool.pdm.dev-dependencies]
 dev = [
-    "ruff>=0.3.7",
-    "pytest>=8.1.1",
+    "ruff>=0.5.2",
+    "pytest>=8.2.2",
     "pytest-cases>=3.8.5",
 ]
 
