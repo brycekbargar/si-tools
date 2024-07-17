@@ -34,7 +34,12 @@ class HiveDataset:
             with suppress(ValueError):
                 # warn about this in the future
                 frames.append(
-                    pl.scan_parquet(f, low_memory=low_memory, hive_schema=self._schema),
+                    pl.scan_parquet(
+                        f,
+                        low_memory=low_memory,
+                        hive_schema=self._schema,
+                        hive_partitioning=True,
+                    ),
                 )
 
         # Is this actually desired?
@@ -54,7 +59,7 @@ class HiveDataset:
             msg = f"Got extra partition keys {"', '".join(kwargs.keys())}"
             raise KeyMismatchError(msg)
 
-        schema = frame.schema
+        schema = frame.collect_schema()
         for k in self._keys:
             if k not in kwargs and k not in schema:
                 msg = f"No way to find values of key '{k}'"
@@ -62,6 +67,8 @@ class HiveDataset:
 
         global_values = {k: kwargs[k] for k in kwargs if k not in schema}
         filters = {k: kwargs[k] for k in kwargs if k in schema}
+        del schema
+        gc.collect()
 
         if len(self._schema) > len(kwargs):
             values_lf = frame.clone()

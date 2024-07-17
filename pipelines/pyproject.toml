@@ -6,9 +6,9 @@ authors = [
     {name = "bryce", email = "brycekbargar@gmail.com"},
 ]
 dependencies = [
-    "polars>=0.20.21",
-    "metaflow>=2.11.12",
-    "pylint>=3.1.0",
+    "polars==1.2.0",
+    "metaflow==2.12.8",
+    "pylint==3.2.5",
 ]
 requires-python = "==3.12.*"
 readme = "README.md"

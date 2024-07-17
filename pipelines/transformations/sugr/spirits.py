@@ -21,7 +21,7 @@ def spirits_by_expansions(expansions: int, spirits: pl.LazyFrame) -> pl.LazyFram
             .otherwise(None)
             .alias("Aspect"),
         )
-        .drop("count")
+        .drop("len")
     )
 
     return (
@@ -138,7 +138,8 @@ def generate_combinations(
             )
         )
 
-    players = len([c for c in previous_combos.columns if c.startswith("Spirit")]) + 1
+    previous_schema = previous_combos.collect_schema()
+    players = len([c for c in previous_schema.names() if c.startswith("Spirit")]) + 1
     sp_col = f"Spirit_{(players-1)}"
     spirit_n = pl.col(sp_col)
     unique_spirits = pl.Expr.not_(spirit_n.eq(pl.col("Spirit_0")))

@@ -14,7 +14,7 @@ __OUTPUT_ARTIFACTS__ = ("ephemeral", "islands_ds")
 __DATASETS__ = ("boards_ds", "layouts_ds")
 
 
-@conda_base(python=">=3.12,<3.13", packages={"polars": ">=0.20.21,<1"})
+@conda_base(python=">=3.12,<3.13", packages={"polars": "==1.2.0"})
 class SugrIslandsFlow(FlowSpec):
     param_input = Parameter("input", required=True, type=str)
     param_keep = Parameter("keep", default=False)

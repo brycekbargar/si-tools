@@ -68,6 +68,7 @@ def explode_layouts(layouts: pl.LazyFrame, players: int) -> pl.LazyFrame:
                 k=100,
             ),
             ["Players", "Layout"],
+            orient="row",
         )
 
     expected = player_layouts.select(

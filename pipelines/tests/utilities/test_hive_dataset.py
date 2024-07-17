@@ -14,7 +14,7 @@ from flows.utilities.hive_dataset import KeyMismatchError
 
 
 class WriteCases:
-    frame = pl.LazyFrame(
+    frame = pl.DataFrame(
         {
             "int": [1, 1, 5, 5, 5, 2, 4],
             "string": ["a", "a", "b", "d", "b", "a", "b"],
@@ -152,10 +152,10 @@ def test_write(
 
         if isinstance(results, type):
             with pytest.raises(results):  # type: ignore[reportArgumentType]
-                dataset.write(WriteCases.frame, **part)
+                dataset.write(WriteCases.frame.lazy(), **part)
             return
 
-        dataset.write(WriteCases.frame, **part)
+        dataset.write(WriteCases.frame.lazy(), **part)
 
         for path, height in results:
             partition = Path(tmpdir) / name / path
@@ -165,7 +165,7 @@ def test_write(
                 assert file.suffix == ".parquet"
 
                 files += 1
-                values = pl.read_parquet(file)
+                values = pl.read_parquet(file, hive_partitioning=True)
                 assert dict(values.schema) == results_schema
                 assert values.height == height
 
