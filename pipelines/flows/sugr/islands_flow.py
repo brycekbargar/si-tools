@@ -11,6 +11,8 @@ from metaflow import (
 
 __OUTPUT_ARTIFACTS__ = ("ephemeral", "islands_ds")
 
+__DATASETS__ = ("boards_ds", "layouts_ds")
+
 
 @conda_base(python=">=3.12,<3.13", packages={"polars": ">=0.20.21,<1"})
 class SugrIslandsFlow(FlowSpec):
@@ -22,6 +24,7 @@ class SugrIslandsFlow(FlowSpec):
         import os
         from pathlib import Path
 
+        import polars as pl
         from utilities.hive_dataset import HiveDataset
         from utilities.working_dir import WorkingDirectory
 
@@ -34,8 +37,8 @@ class SugrIslandsFlow(FlowSpec):
         self.islands_ds = HiveDataset(
             temp.push_segment("results").path,
             "islands",
-            "Type",
-            "Players",
+            Type=pl.String,  # type: ignore [argumentType]
+            Players=pl.UInt8,  # type: ignore [argumentType]
         )
 
         self.ephemeral = temp.push_segment("ephemeral")
@@ -53,6 +56,20 @@ class SugrIslandsFlow(FlowSpec):
 
     @step
     def branch_loose_board_islands(self) -> None:
+        import polars as pl
+        from utilities.hive_dataset import HiveDataset
+
+        self.boards_ds = HiveDataset(
+            self.ephemeral.path,
+            "boards",
+            Type=pl.String,  # type: ignore [argumentType]
+            Players=pl.UInt8,  # type: ignore [argumentType]
+        )
+        self.layouts_ds = HiveDataset(
+            self.ephemeral.path,
+            "layouts",
+            Players=pl.UInt8,  # type: ignore [argumentType]
+        )
         self.next(self.fanout_boardcount, self.explode_layouts)
 
     @step
@@ -62,8 +79,6 @@ class SugrIslandsFlow(FlowSpec):
 
     @step
     def generate_board_combinations(self) -> None:
-        from utilities.hive_dataset import HiveDataset
-
         from transformations.sugr.islands import generate_board_combinations
 
         (board_count, max_players) = typing.cast(
@@ -71,9 +86,8 @@ class SugrIslandsFlow(FlowSpec):
             self.input,
         )
 
-        boards_ds = HiveDataset(self.ephemeral.path, "boards", "Type", "Players")
         for pc in list(range(1, max_players + 1)):
-            boards_ds.write(
+            self.boards_ds.write(
                 generate_board_combinations(
                     board_count,
                     pc,
@@ -86,18 +100,20 @@ class SugrIslandsFlow(FlowSpec):
 
     @step
     def collect_boardcount(self, inputs: typing.Any) -> None:
-        self.merge_artifacts(inputs, include=list(__OUTPUT_ARTIFACTS__))
+        self.merge_artifacts(
+            inputs,
+            include=[*__OUTPUT_ARTIFACTS__, *__DATASETS__],
+        )
         self.next(self.join_loose_board_islands)
 
     @retry
     @step
     def explode_layouts(self) -> None:
         import polars as pl
-        from utilities.dataset import Dataset
 
         from transformations.sugr.islands import explode_layouts
 
-        Dataset(self.ephemeral.path, "layouts").write(
+        self.layouts_ds.write(
             pl.concat(
                 explode_layouts(pl.scan_csv(self.layouts_tsv, separator="\t"), pc)
                 for pc in range(1, 7)
@@ -108,19 +124,17 @@ class SugrIslandsFlow(FlowSpec):
 
     @step
     def join_loose_board_islands(self, inputs: typing.Any) -> None:
-        self.merge_artifacts(inputs, include=list(__OUTPUT_ARTIFACTS__))
+        self.merge_artifacts(inputs, include=[*__OUTPUT_ARTIFACTS__, *__DATASETS__])
         self.next(self.generate_loose_islands)
 
     @step
     def generate_loose_islands(self) -> None:
-        from utilities.dataset import Dataset
-
         from transformations.sugr.islands import generate_loose_islands
 
         self.islands_ds.write(
             generate_loose_islands(
-                Dataset(self.ephemeral.path, "layouts").read(),
-                Dataset(self.ephemeral.path, "boards").read(how="diagonal"),
+                self.layouts_ds.read(),
+                self.boards_ds.read(how="diagonal"),
             ),
         )
 

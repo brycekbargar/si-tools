@@ -26,7 +26,7 @@ class WriteCases:
         self,
     ):
         return (
-            ["int"],
+            {"int": pl.UInt32},
             {},
             [("int=1", 2), ("int=2", 1), ("int=4", 1), ("int=5", 3)],
         )
@@ -34,18 +34,18 @@ class WriteCases:
     def case_single_key_one(  # noqa:ANN201
         self,
     ):
-        return (["int"], {"int": 1}, [("int=1", 2)])
+        return ({"int": pl.UInt32}, {"int": 1}, [("int=1", 2)])
 
     def case_single_key_mismatch(  # noqa:ANN201
         self,
     ):
-        return (["int"], {"string": 1}, KeyMismatchError)
+        return ({"int": pl.UInt32}, {"string": 1}, KeyMismatchError)
 
     def case_multiple_key_all(  # noqa:ANN201
         self,
     ):
         return (
-            ["int", "string"],
+            {"int": pl.UInt32, "string": pl.String},
             {"int": 1, "string": "a"},
             [("int=1/string=a", 2)],
         )
@@ -54,7 +54,7 @@ class WriteCases:
         self,
     ):
         return (
-            ["int", "string"],
+            {"int": pl.UInt32, "string": pl.String},
             {"int": 5},
             [("int=5/string=b", 2), ("int=5/string=d", 1)],
         )
@@ -63,7 +63,7 @@ class WriteCases:
         self,
     ):
         return (
-            ["int", "string"],
+            {"int": pl.UInt32, "string": pl.String},
             {},
             [
                 ("int=1/string=a", 2),
@@ -77,18 +77,22 @@ class WriteCases:
     def case_multiple_key_mismatch(  # noqa:ANN201
         self,
     ):
-        return (["int", "string"], {"banana": 1}, KeyMismatchError)
+        return (
+            {"int": pl.UInt32, "string": pl.String},
+            {"banana": 1},
+            KeyMismatchError,
+        )
 
 
-@parametrize_with_cases("keys, part, results", cases=WriteCases)
+@parametrize_with_cases("schema, part, results", cases=WriteCases)
 def test_write(
-    keys: list[str],
+    schema: dict[str, pl.DataType],
     part: dict[str, typing.Any],
     results: list[tuple[str, int]] | type,
 ) -> None:
     with tempfile.TemporaryDirectory() as tmpdir:
         name = str(uuid4())
-        dataset = uut(tmpdir, name, *keys)
+        dataset = uut(tmpdir, name, **schema)
 
         if isinstance(results, type):
             with pytest.raises(results):  # type: ignore[reportArgumentType]

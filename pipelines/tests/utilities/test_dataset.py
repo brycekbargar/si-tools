@@ -12,7 +12,7 @@ def test_roundtrip() -> None:
         base = Path(tmpdir)
 
         name = str(uuid4())
-        write_dataset = uut(name)
+        write_dataset = uut(base, name)
 
         frame1 = pl.LazyFrame(
             {
@@ -29,11 +29,11 @@ def test_roundtrip() -> None:
             },
         )
 
-        write_dataset.write(base, frame1)
-        write_dataset.write(base, frame2)
+        write_dataset.write(frame1)
+        write_dataset.write(frame2)
 
-        read_dataset = uut(name)
-        read_frame = read_dataset.read(base, how="diagonal")
+        read_dataset = uut(base, name)
+        read_frame = read_dataset.read(how="diagonal")
 
         assert read_frame.schema == {
             "int": pl.Int64,

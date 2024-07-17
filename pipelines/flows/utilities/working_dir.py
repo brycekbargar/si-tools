@@ -37,7 +37,7 @@ class WorkingDirectory:
         return WorkingDirectory(self.path / segment)
 
     def cleanup(self) -> None:
-        shutil.rmtree(str(self.ephemeral))
+        shutil.rmtree(str(self.path))
 
     def push_partitions(self, *args: tuple[str, Any]) -> "WorkingDirectory":
         """Creates a new subdirectory of the WorkingDirectory.

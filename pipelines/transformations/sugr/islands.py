@@ -49,7 +49,7 @@ def generate_board_combinations(
             [[boards[b] for b in c[1]] for c in combos],
             {f"Board_{p}": pl.Utf8 for p in range(players)},
         )
-        .with_columns(pl.lit(players).cast(pl.UInt8).alias("Players"))
+        .with_columns(pl.lit(players).alias("Players"))
         .with_columns(pl.lit(f"{total_boards}B").alias("Type"))
     )
 
@@ -72,7 +72,7 @@ def explode_layouts(layouts: pl.LazyFrame, players: int) -> pl.LazyFrame:
                 k=100,
             ),
             {"Layout": pl.Utf8},
-        ).with_columns(pl.lit(players).cast(pl.UInt8).alias("Players"))
+        ).with_columns(pl.lit(players).alias("Players"))
 
     expected = player_layouts.select(
         pl.col("Layout"),
@@ -111,16 +111,14 @@ def explode_layouts(layouts: pl.LazyFrame, players: int) -> pl.LazyFrame:
 
 def generate_loose_islands(layouts: pl.LazyFrame, boards: pl.LazyFrame) -> pl.LazyFrame:
     """Generates all possible islands combing layouts + boards."""
-    #  TODO: Remove this casting hack
-    return layouts.clone().join(boards.cast({"Players": pl.UInt8}), on="Players")
+    return layouts.clone().join(boards.clone(), on="Players")
 
 
 def generate_fixed_islands(players: int) -> pl.LazyFrame:
     """Hackily generates layouts + boards for Horizons only games."""
-    frame: pl.LazyFrame
     match players:
         case 1:
-            frame = pl.LazyFrame(
+            return pl.LazyFrame(
                 [
                     ["FB", 1, "Three-Player Side", "F"],
                     ["FB", 1, "Three-Player Side", "G"],
@@ -152,10 +150,8 @@ def generate_fixed_islands(players: int) -> pl.LazyFrame:
                     ["FB", 3, "Three-Player Side", "H", "F", "G"],
                     ["FB", 3, "Three-Player Side", "H", "G", "F"],
                 ],
-                ["Type", "Players", "Layout", "Board_0", "Board_1", "Board2"],
+                ["Type", "Players", "Layout", "Board_0", "Board_1", "Board_2"],
             )
         case _:
             msg = "Only 1-3 players are supported on the fixed island board."
             raise IndexError(msg)
-
-    return frame.cast({"Players": pl.UInt8})
