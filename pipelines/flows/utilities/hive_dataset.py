@@ -17,6 +17,7 @@ class HiveDataset:
             msg = "No partition keys provided"
             raise KeyMismatchError(msg)
         self._schema = kwargs
+        self._keys = list(kwargs.keys())
 
     def read(
         self,
@@ -41,26 +42,42 @@ class HiveDataset:
             return pl.LazyFrame()
 
         # https://github.com/pola-rs/polars/issues/12508
-        return pl.concat(frames, how=how)
+        return pl.concat(frames, how=how).drop(kwargs.keys())
 
     def write(
         self,
         frame: pl.LazyFrame,
         **kwargs: typing.Any,
     ) -> None:
-        if len(set(kwargs.keys()) - set(self._schema.keys())) > 0:
+        keys = set(self._keys)
+        if len(set(kwargs.keys()) - keys) > 0:
             msg = f"Got extra partition keys {"', '".join(kwargs.keys())}"
             raise KeyMismatchError(msg)
 
+        schema = frame.schema
+        for k in self._keys:
+            if k not in kwargs and k not in schema:
+                msg = f"No way to find values of key '{k}'"
+                raise KeyMismatchError(msg)
+
+        global_values = {k: kwargs[k] for k in kwargs if k not in schema}
+        filters = {k: kwargs[k] for k in kwargs if k in schema}
+
         if len(self._schema) > len(kwargs):
+            values_lf = frame.clone()
             values_df = (
-                (frame.clone().filter(**kwargs) if len(kwargs) > 0 else frame)
-                .select(self._schema.keys())
+                (
+                    (values_lf.filter(**filters) if len(filters) > 0 else values_lf)
+                    if len(filters) > 0
+                    else frame
+                )
+                .select(keys - set(global_values.keys()))
                 .unique()
                 .collect(streaming=True)
             )
 
-            parts = values_df.to_dicts()
+            parts = [({**global_values, **f}, f) for f in values_df.to_dicts()]
+            del values_lf
             del values_df
             gc.collect()
 
@@ -68,17 +85,19 @@ class HiveDataset:
                 msg = "No unique values were found to partition by"
                 raise KeyMismatchError(msg)
         else:
-            parts = [kwargs]
+            parts = [({**global_values, **filters}, filters)]
 
         batch = str(uuid4())
-        for part in parts:
-            path = Path(
-                *[f"{k}={part[k]}" for k in self._schema],
-            )
+        for segment, part in parts:
+            path = Path(*[f"{k}={segment[k]}" for k in self._keys])
 
             (self._dataset_path / path).mkdir(mode=0o755, parents=True, exist_ok=True)
             partition = frame.clone()
-            partition.filter(**part).drop(self._schema.keys()).sink_parquet(
+            (
+                partition.filter(**part).drop(part.keys())
+                if len(part) > 0
+                else partition
+            ).sink_parquet(
                 self._dataset_path / path / f"{batch}-0.parquet",
                 maintain_order=False,
             )

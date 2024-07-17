@@ -113,10 +113,10 @@ class SugrIslandsFlow(FlowSpec):
 
         from transformations.sugr.islands import explode_layouts
 
+        layouts = pl.scan_csv(self.layouts_tsv, separator="\t")
         self.layouts_ds.write(
             pl.concat(
-                explode_layouts(pl.scan_csv(self.layouts_tsv, separator="\t"), pc)
-                for pc in range(1, 7)
+                [explode_layouts(layouts, pc) for pc in range(1, 7)],
             ),
         )
 
