@@ -55,44 +55,42 @@ class HiveDataset:
         **kwargs: typing.Any,
     ) -> None:
         keys = set(self._keys)
-        if len(set(kwargs.keys()) - keys) > 0:
-            msg = f"Got extra partition keys {"', '".join(kwargs.keys())}"
+        contextual_keys = set(kwargs.keys())
+
+        extra_keys = contextual_keys - keys
+        if len(extra_keys) > 0:
+            msg = f"Got extra partition keys: {"', '".join(extra_keys)}"
             raise KeyMismatchError(msg)
 
         schema = frame.collect_schema()
-        for k in self._keys:
-            if k not in kwargs and k not in schema:
-                msg = f"No way to find values of key '{k}'"
-                raise KeyMismatchError(msg)
-
-        global_values = {k: kwargs[k] for k in kwargs if k not in schema}
-        filters = {k: kwargs[k] for k in kwargs if k in schema}
+        columns = set(schema.names())
         del schema
         gc.collect()
 
-        if len(self._schema) > len(kwargs):
-            values_lf = frame.clone()
-            values_df = (
-                (
-                    (values_lf.filter(**filters) if len(filters) > 0 else values_lf)
-                    if len(filters) > 0
-                    else frame
-                )
-                .select(keys - set(global_values.keys()))
-                .unique()
-                .collect(streaming=True)
-            )
+        overspecified_keys = contextual_keys.intersection(columns)
+        if len(overspecified_keys) > 0:
+            msg = f"Contextual keys were found in the frame: {"', '".join(overspecified_keys)}"  # noqa: E501
+            raise KeyMismatchError(msg)
 
-            parts = [({**global_values, **f}, f) for f in values_df.to_dicts()]
-            del values_lf
-            del values_df
+        underspecified_keys = [
+            k for k in keys if k not in columns and k not in contextual_keys
+        ]
+        if len(underspecified_keys) > 0:
+            msg = f"No way to find the values for keys: {"', '".join(underspecified_keys)}"  # noqa: E501
+            raise KeyMismatchError(msg)
+
+        frame_keys = keys - contextual_keys
+        if len(frame_keys) > 0:
+            values = frame.clone().select(frame_keys).unique().collect(streaming=True)
+            parts = [({**kwargs, **p}, p) for p in values.to_dicts()]
+            del values
             gc.collect()
 
             if len(parts) == 0:
-                msg = "No unique values were found to partition by"
+                msg = f"No unique values were found for keys: {"', '".join(frame_keys)}"
                 raise KeyMismatchError(msg)
         else:
-            parts = [({**global_values, **filters}, filters)]
+            parts = [(kwargs, {})]
 
         batch = str(uuid4())
         for segment, part in parts:

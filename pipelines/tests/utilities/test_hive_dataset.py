@@ -22,7 +22,7 @@ class WriteCases:
         },
     )
 
-    def case_single_key_none(  # noqa:ANN201
+    def case_single_key(  # noqa:ANN201
         self,
     ):
         return (
@@ -32,10 +32,35 @@ class WriteCases:
             WriteCases.frame.schema,
         )
 
-    def case_single_key_one(  # noqa:ANN201
+    def case_single_key_extra(  # noqa:ANN201
         self,
     ):
-        return ({"int": pl.UInt32}, {"int": 1}, [("int=1", 2)], WriteCases.frame.schema)
+        return (
+            {"int": pl.UInt32},
+            {"banana": "mushy"},
+            KeyMismatchError,
+            WriteCases.frame.schema,
+        )
+
+    def case_single_key_underspecified(  # noqa:ANN201
+        self,
+    ):
+        return (
+            {"banana": pl.String},
+            {},
+            KeyMismatchError,
+            None,
+        )
+
+    def case_single_key_overspecified(  # noqa:ANN201
+        self,
+    ):
+        return (
+            {"int": pl.UInt32},
+            {"int": 1},
+            KeyMismatchError,
+            None,
+        )
 
     def case_single_key_mismatch(  # noqa:ANN201
         self,
@@ -47,27 +72,7 @@ class WriteCases:
             WriteCases.frame.schema,
         )
 
-    def case_multiple_key_all(  # noqa:ANN201
-        self,
-    ):
-        return (
-            {"int": pl.UInt32, "string": pl.String},
-            {"int": 1, "string": "a"},
-            [("int=1/string=a", 2)],
-            WriteCases.frame.schema,
-        )
-
-    def case_multiple_key_one(  # noqa:ANN201
-        self,
-    ):
-        return (
-            {"int": pl.UInt32, "string": pl.String},
-            {"int": 5},
-            [("int=5/string=b", 2), ("int=5/string=d", 1)],
-            WriteCases.frame.schema,
-        )
-
-    def case_multiple_key_none(  # noqa:ANN201
+    def case_multiple_keys(  # noqa:ANN201
         self,
     ):
         return (
@@ -83,27 +88,7 @@ class WriteCases:
             WriteCases.frame.schema,
         )
 
-    def case_multiple_key_mismatch(  # noqa:ANN201
-        self,
-    ):
-        return (
-            {"int": pl.UInt32, "string": pl.String},
-            {"banana": 1},
-            KeyMismatchError,
-            WriteCases.frame.schema,
-        )
-
-    def case_contextual_key_all(  # noqa:ANN201
-        self,
-    ):
-        return (
-            {"banana": pl.String, "int": pl.UInt32, "string": pl.String},
-            {"int": 1, "banana": "mushy", "string": "a"},
-            [("banana=mushy/int=1/string=a", 2)],
-            {**WriteCases.frame.schema, "banana": pl.String},
-        )
-
-    def case_contextual_key_one(  # noqa:ANN201
+    def case_contextual_key(  # noqa:ANN201
         self,
     ):
         return (
@@ -115,26 +100,6 @@ class WriteCases:
                 ("banana=mushy/int=4", 1),
                 ("banana=mushy/int=5", 3),
             ],
-            {**WriteCases.frame.schema, "banana": pl.String},
-        )
-
-    def case_contextual_key_none(  # noqa:ANN201
-        self,
-    ):
-        return (
-            {"banana": pl.String},
-            {},
-            KeyMismatchError,
-            {**WriteCases.frame.schema, "banana": pl.String},
-        )
-
-    def case_contextual_key_mismatch(  # noqa:ANN201
-        self,
-    ):
-        return (
-            {"banana": pl.String, "string": pl.String},
-            {"int": 1},
-            KeyMismatchError,
             {**WriteCases.frame.schema, "banana": pl.String},
         )
 
