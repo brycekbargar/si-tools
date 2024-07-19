@@ -25,29 +25,51 @@ class HiveDataset:
         how: typing.Literal["vertical", "diagonal"] = "vertical",
         **kwargs: typing.Any,
     ) -> pl.LazyFrame:
-        path = Path(*[f"{k}={kwargs.get(k, '*')}" for k in self._schema])
+        keys = set(self._keys)
+        contextual_keys = set(kwargs.keys())
 
-        frames = []
-        for f in self._dataset_path.glob(str(path / "*.parquet")):
-            from contextlib import suppress
+        extra_keys = contextual_keys - keys
+        if len(extra_keys) > 0:
+            msg = f"Got extra partition keys: {"', '".join(extra_keys)}"
+            raise KeyMismatchError(msg)
 
-            with suppress(ValueError):
-                # warn about this in the future
-                frames.append(
-                    pl.scan_parquet(
-                        f,
-                        low_memory=low_memory,
-                        hive_schema=self._schema,
-                        hive_partitioning=True,
-                    ),
+        if how == "vertical":
+            if len(kwargs) == 0:
+                return pl.scan_parquet(
+                    self._dataset_path,
+                    low_memory=low_memory,
+                    hive_schema=self._schema,
                 )
 
-        # Is this actually desired?
-        if len(frames) == 0:
-            return pl.LazyFrame()
+            return (
+                pl.scan_parquet(
+                    self._dataset_path,
+                    low_memory=low_memory,
+                    hive_schema=self._schema,
+                )
+                .filter(**kwargs)
+                .drop(kwargs.keys())
+                .cache()
+            )
 
         # https://github.com/pola-rs/polars/issues/12508
-        return pl.concat(frames, how=how).drop(kwargs.keys())
+        return pl.concat(
+            (
+                pl.scan_parquet(
+                    f,
+                    low_memory=low_memory,
+                    hive_schema=self._schema,
+                    hive_partitioning=True,
+                )
+                for f in self._dataset_path.glob(
+                    str(
+                        Path(*[f"{k}={kwargs.get(k, '*')}" for k in self._schema])
+                        / "*.parquet",
+                    ),
+                )
+            ),
+            how=how,
+        ).drop(kwargs.keys())
 
     def write(
         self,

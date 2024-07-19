@@ -104,25 +104,28 @@ class WriteCases:
         )
 
 
-@parametrize_with_cases("schema, part, results, results_schema", cases=WriteCases)
+@parametrize_with_cases(
+    "schema, contextual_values, expected, expected_schema",
+    cases=WriteCases,
+)
 def test_write(
     schema: dict[str, pl.DataType],
-    part: dict[str, typing.Any],
-    results: list[tuple[str, int]] | type,
-    results_schema: dict[str, pl.DataType],
+    contextual_values: dict[str, typing.Any],
+    expected: list[tuple[str, int]] | type,
+    expected_schema: dict[str, pl.DataType],
 ) -> None:
     with tempfile.TemporaryDirectory() as tmpdir:
         name = str(uuid4())
         dataset = uut(tmpdir, name, **schema)
 
-        if isinstance(results, type):
-            with pytest.raises(results):  # type: ignore[reportArgumentType]
-                dataset.write(WriteCases.frame.lazy(), **part)
+        if isinstance(expected, type):
+            with pytest.raises(expected):  # type: ignore[reportArgumentType]
+                dataset.write(WriteCases.frame.lazy(), **contextual_values)
             return
 
-        dataset.write(WriteCases.frame.lazy(), **part)
+        dataset.write(WriteCases.frame.lazy(), **contextual_values)
 
-        for path, height in results:
+        for path, expected_height in expected:
             partition = Path(tmpdir) / name / path
             assert partition.exists()
             files = 0
@@ -130,8 +133,126 @@ def test_write(
                 assert file.suffix == ".parquet"
 
                 files += 1
-                values = pl.read_parquet(file, hive_partitioning=True)
-                assert dict(values.schema) == results_schema
-                assert values.height == height
+                results = pl.read_parquet(file, hive_partitioning=True)
+                assert dict(results.schema) == expected_schema
+                assert results.height == expected_height
 
             assert files == 1
+
+
+class ReadCases:
+    def case_single_key(  # noqa:ANN201
+        self,
+    ):
+        return (
+            {"int": pl.UInt8},
+            {
+                "int=1": pl.DataFrame(
+                    {"string": ["a", "a", "b"], "values": ["1a", "1a", "1b"]},
+                ),
+                "int=2": pl.DataFrame(
+                    {"string": ["a", "a", "b"], "values": ["2a", "2a", "2b"]},
+                ),
+            },
+            {},
+            6,
+            {"int": pl.UInt8, "string": pl.String, "values": pl.String},
+        )
+
+    def case_multiple_keys(  # noqa:ANN201
+        self,
+    ):
+        return (
+            {"int": pl.UInt8, "string": pl.String},
+            {
+                "int=1/string=a": pl.DataFrame(
+                    {"values": ["1a", "1a"]},
+                ),
+                "int=1/string=b": pl.DataFrame(
+                    {"values": ["1b"]},
+                ),
+                "int=2/string=a": pl.DataFrame(
+                    {"values": ["2a", "2a"]},
+                ),
+                "int=2/string=b": pl.DataFrame(
+                    {"values": ["2b"]},
+                ),
+            },
+            {},
+            6,
+            {"int": pl.UInt8, "string": pl.String, "values": pl.String},
+        )
+
+    def case_diagonal_frames(  # noqa:ANN201
+        self,
+    ):
+        return (
+            {"int": pl.UInt8},
+            {
+                "int=1": pl.DataFrame(
+                    {
+                        "string": ["a", "a", "b"],
+                        "values": ["1a", "1a", "1b"],
+                        "extras": [666, 666, 666],
+                    },
+                ),
+                "int=2": pl.DataFrame(
+                    {"string": ["a", "a", "b"], "values": ["2a", "2a", "2b"]},
+                ),
+            },
+            {"how": "diagonal"},
+            6,
+            {
+                "int": pl.UInt8,
+                "string": pl.String,
+                "values": pl.String,
+                "extras": pl.Int64,
+            },
+        )
+
+    def case_contextual_values(  # noqa:ANN201
+        self,
+    ):
+        return (
+            {"int": pl.UInt8},
+            {
+                "int=1": pl.DataFrame(
+                    {"string": ["a", "a", "b"], "values": ["1a", "1a", "1b"]},
+                ),
+                "int=2": pl.DataFrame(
+                    {"string": ["a", "a", "b"], "values": ["2a", "2a", "2b"]},
+                ),
+            },
+            {"int": 2},
+            3,
+            {"string": pl.String, "values": pl.String},
+        )
+
+
+@parametrize_with_cases(
+    "schema, partition, read_opts, expected, expected_schema",
+    cases=ReadCases,
+)
+def test_read(
+    schema: dict[str, pl.DataType],
+    partition: dict[str, pl.DataFrame],
+    read_opts: dict[str, typing.Any],
+    expected: int,
+    expected_schema: dict[str, pl.DataType],
+) -> None:
+    with tempfile.TemporaryDirectory() as tmpdir:
+        name = str(uuid4())
+        dataset = uut(tmpdir, name, **schema)
+
+        for hive, frame in partition.items():
+            path = Path(tmpdir, name, hive)
+            path.mkdir(
+                mode=0o755,
+                parents=True,
+                exist_ok=True,
+            )
+            frame.write_parquet(path / f"{uuid4()}.parquet")
+
+        results = dataset.read(**read_opts).collect(streaming=True)
+        assert dict(results.schema) == expected_schema
+        assert results.height == expected
