@@ -228,6 +228,34 @@ class ReadCases:
             {"string": pl.String, "values": pl.String},
         )
 
+    def case_diagonal_frames_contextual_values(  # noqa:ANN201
+        self,
+    ):
+        return (
+            {"int": pl.UInt8, "string": pl.String},
+            {
+                "int=1/string=a": pl.DataFrame(
+                    {
+                        "values": ["1a", "1a"],
+                        "extras": [666, 666],
+                    },
+                ),
+                "int=1/string=c": pl.DataFrame(
+                    {"values": ["1c", "1c"]},
+                ),
+                "int=2/string=a": pl.DataFrame(
+                    {"values": ["2a", "2a"]},
+                ),
+            },
+            {"how": "diagonal", "int": 1},
+            4,
+            {
+                "string": pl.String,
+                "values": pl.String,
+                "extras": pl.Int64,
+            },
+        )
+
 
 @parametrize_with_cases(
     "schema, partition, read_opts, expected, expected_schema",

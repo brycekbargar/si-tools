@@ -7,11 +7,20 @@ import polars as pl
 
 
 class KeyMismatchError(Exception):
-    pass
+    """Indicates an incompatibility between the Hive schema and contextual keys."""
 
 
 class HiveDataset:
+    """Polars interop for working with data partitioned Hive-style."""
+
     def __init__(self, base: str | Path, dataset: str, **kwargs: pl.DataType) -> None:
+        """Creates a new low-memory and picklable HiveDataset.
+
+        Args:
+            base: Root path on the file system for datasets.
+            dataset: Name of the dataset.
+            **kwargs: Schema of the Hive key/values (not the whole dataset).
+        """
         self._dataset_path = Path(base) / dataset
         if len(kwargs) == 0:
             msg = "No partition keys provided"
@@ -25,6 +34,18 @@ class HiveDataset:
         how: typing.Literal["vertical", "diagonal"] = "vertical",
         **kwargs: typing.Any,
     ) -> pl.LazyFrame:
+        """Creates a view into the dataset as a LazyFrame.
+
+        By default the whole dataset is exposed,
+        you can get slices of it based on the Hive Partitioning by passing kwargs.
+
+        Args:
+            low_memory: Reduce memory pressure at the expense of performance.
+            how: The polars.concat method to use for combining partitions.
+            **kwargs: Contextual values. If given, the frame will be filtered
+                to that partition. Additionally, the given keys will be dropped
+                from the frame as they are constants.
+        """
         keys = set(self._keys)
         contextual_keys = set(kwargs.keys())
 
@@ -53,29 +74,43 @@ class HiveDataset:
             )
 
         # https://github.com/pola-rs/polars/issues/12508
-        return pl.concat(
-            (
-                pl.scan_parquet(
-                    f,
-                    low_memory=low_memory,
-                    hive_schema=self._schema,
-                    hive_partitioning=True,
-                )
-                for f in self._dataset_path.glob(
-                    str(
-                        Path(*[f"{k}={kwargs.get(k, '*')}" for k in self._schema])
-                        / "*.parquet",
-                    ),
-                )
-            ),
-            how=how,
-        ).drop(kwargs.keys())
+        return (
+            pl.concat(
+                (
+                    pl.scan_parquet(
+                        f,
+                        low_memory=low_memory,
+                        hive_schema=self._schema,
+                        hive_partitioning=True,
+                    )
+                    for f in self._dataset_path.glob(
+                        str(
+                            Path(*[f"{k}={kwargs.get(k, '*')}" for k in self._schema])
+                            / "*.parquet",
+                        ),
+                    )
+                ),
+                how=how,
+                rechunk=True,
+            )
+            .drop(kwargs.keys())
+            .cache()
+        )
 
     def write(
         self,
         frame: pl.LazyFrame,
         **kwargs: typing.Any,
     ) -> None:
+        """Appends data to the dataset using Hive-style partitioning.
+
+        Partitioning will be inferred based on the schema of the Hive keys.
+
+        Args:
+            frame: The lazyframe to append.
+            **kwargs: Contextual values for use in Hive partitioning.
+              These are treated as constants and should not appear in the frame.
+        """
         keys = set(self._keys)
         contextual_keys = set(kwargs.keys())
 
