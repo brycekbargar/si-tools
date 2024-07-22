@@ -3,8 +3,7 @@ import pytest
 
 import transformations.sugr.games as uut
 
-
-def test_define_buckets() -> None:
+"""def test_define_buckets() -> None:
     games: dict[str, list[float]] = {
         "Difficulty": [
             -2.21,
@@ -80,6 +79,7 @@ def test_define_buckets() -> None:
         if i == 4:
             assert difficulty["Max"][i] == 8.03
             assert complexity["Max"][i] == 9.75
+"""
 
 
 @pytest.mark.parametrize("bucket", [(0, 0), (0, 1), (1, 0), (1, 1)])

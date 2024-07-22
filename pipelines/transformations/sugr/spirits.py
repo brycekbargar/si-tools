@@ -48,7 +48,7 @@ def calculate_matchups(matchup: str, spirits: pl.LazyFrame) -> pl.LazyFrame:
     """Calculate the difficulty modifiers and best/worst spirits for the matchup."""
     spirit_matchups = (
         spirits.clone()
-        .filter(pl.Expr.not_(pl.col(matchup).eq(pl.lit("Unplayable")).not_()))
+        .filter(pl.Expr.not_(pl.col(matchup).eq(pl.lit("Unplayable"))))
         .join(
             pl.LazyFrame(
                 {
@@ -64,7 +64,7 @@ def calculate_matchups(matchup: str, spirits: pl.LazyFrame) -> pl.LazyFrame:
                     "Difficulty": [-3, 0, 3, -3, -1, 1, 3],
                 },
                 schema={
-                    matchup: None,
+                    matchup: pl.Utf8,
                     "Difficulty": pl.Int8,
                 },
             ),
@@ -92,8 +92,8 @@ def calculate_matchups(matchup: str, spirits: pl.LazyFrame) -> pl.LazyFrame:
                     [
                         pl.col("Name"),
                         pl.lit(" ("),
-                        pl.col("Aspect").list.join(", "),
-                        pl.lit(")"),
+                        pl.col("Aspect").list.join(" or "),
+                        pl.lit(" Recommended)"),
                     ],
                 ),
             )
@@ -105,9 +105,9 @@ def calculate_matchups(matchup: str, spirits: pl.LazyFrame) -> pl.LazyFrame:
         pl.col("Difficulty"),
         pl.col("Complexity"),
         pl.col("Spirit"),
-    ).with_columns(pl.lit(matchup).alias("Matchup"))
+    )
 
-    # list/string munging isn't supported by sink_parquet as of 0.20.2
+    # list/string munging isn't supported by sink_parquet as of 1.1
     return spirit_matchups.collect(streaming=True).lazy()
 
 
@@ -128,7 +128,6 @@ def generate_combinations(
             )
             .rename({"Spirit": "Spirit_0"})
             .select(
-                pl.col("Matchup"),
                 pl.col("NDifficulty"),
                 pl.col("Difficulty"),
                 pl.col("NComplexity"),
@@ -154,29 +153,17 @@ def generate_combinations(
             previous_combos.clone(),
             how="cross",
         )
-        .filter(pl.col("Matchup").eq(pl.col("Matchup_right")))
         .rename({"Spirit": sp_col})
         .filter(unique_spirits)
         .with_columns(
-            [
-                pl.col("Difficulty").add(pl.col("Difficulty_right")),
-                pl.col("Complexity").add(pl.col("Complexity_right")),
-                pl.col("Hash").add(pl.col(sp_col).hash()),
-            ],
+            pl.col("Difficulty").add(pl.col("Difficulty_right")),
+            pl.col("Complexity").add(pl.col("Complexity_right")),
+            pl.col("Hash").add(pl.col(sp_col).hash()),
         )
         .with_columns(
             pl.col("Difficulty").truediv(players).cast(pl.Float32).alias("NDifficulty"),
             pl.col("Complexity").truediv(players).cast(pl.Float32).alias("NComplexity"),
         )
-        .drop("Difficulty_right", "Complexity_right", "Matchup_right")
-        .unique(subset="Hash", keep="first")
-    )
-
-
-def finalize_combinations(combos: pl.LazyFrame) -> pl.LazyFrame:
-    """Cleans the columns used for generating spirit combinations."""
-    return (
-        combos.clone()
-        .drop("Hash", "Difficulty", "Complexity")
-        .rename({"NDifficulty": "Difficulty", "NComplexity": "Complexity"})
+        .drop("Difficulty_right", "Complexity_right")
+        .unique("Hash")
     )

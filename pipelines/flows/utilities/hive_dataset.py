@@ -70,32 +70,26 @@ class HiveDataset:
                 )
                 .filter(**kwargs)
                 .drop(kwargs.keys())
-                .cache()
             )
 
         # https://github.com/pola-rs/polars/issues/12508
-        return (
-            pl.concat(
-                (
-                    pl.scan_parquet(
-                        f,
-                        low_memory=low_memory,
-                        hive_schema=self._schema,
-                        hive_partitioning=True,
-                    )
-                    for f in self._dataset_path.glob(
-                        str(
-                            Path(*[f"{k}={kwargs.get(k, '*')}" for k in self._schema])
-                            / "*.parquet",
-                        ),
-                    )
-                ),
-                how=how,
-                rechunk=True,
-            )
-            .drop(kwargs.keys())
-            .cache()
-        )
+        return pl.concat(
+            (
+                pl.scan_parquet(
+                    f,
+                    low_memory=low_memory,
+                    hive_schema=self._schema,
+                    hive_partitioning=True,
+                )
+                for f in self._dataset_path.glob(
+                    str(
+                        Path(*[f"{k}={kwargs.get(k, '*')}" for k in self._schema])
+                        / "*.parquet",
+                    ),
+                )
+            ),
+            how=how,
+        ).drop(kwargs.keys())
 
     def write(
         self,
@@ -154,12 +148,12 @@ class HiveDataset:
             path = Path(*[f"{k}={segment[k]}" for k in self._keys])
 
             (self._dataset_path / path).mkdir(mode=0o755, parents=True, exist_ok=True)
-            partition = frame.clone()
-            (
-                partition.filter(**part).drop(part.keys())
+            partition = (
+                frame.clone().filter(**part).drop(part.keys())
                 if len(part) > 0
-                else partition
-            ).sink_parquet(
+                else frame.clone()
+            )
+            partition.sink_parquet(
                 self._dataset_path / path / f"{batch}-0.parquet",
                 maintain_order=False,
             )
