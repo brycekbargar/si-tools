@@ -200,7 +200,7 @@ class ReadCases:
                     {"string": ["a", "a", "b"], "values": ["2a", "2a", "2b"]},
                 ),
             },
-            {"how": "diagonal"},
+            {},
             6,
             {
                 "int": pl.UInt8,
@@ -247,7 +247,7 @@ class ReadCases:
                     {"values": ["2a", "2a"]},
                 ),
             },
-            {"how": "diagonal", "int": 1},
+            {"int": 1},
             4,
             {
                 "string": pl.String,

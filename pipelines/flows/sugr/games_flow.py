@@ -178,7 +178,6 @@ class SugrGamesFlow(FlowSpec):
                         Matchup=self.matchup,
                     ),
                     self.combinations_ds.read(
-                        how="diagonal",
                         Expansion=self.expansion,
                         Matchup=self.matchup,
                         Players=pc,
@@ -212,8 +211,8 @@ class SugrGamesFlow(FlowSpec):
         from transformations.sugr.games import define_buckets
 
         self.buckets = define_buckets(
-            self.adversaries_ds.read(how="diagonal"),
-            self.combinations_ds.read(how="diagonal"),
+            self.adversaries_ds.read(),
+            self.combinations_ds.read(),
         )
 
         self.next(self.bucket_games, foreach="buckets")
@@ -240,9 +239,8 @@ class SugrGamesFlow(FlowSpec):
             filter_by_bucket(
                 (difficulty_min, difficulty_max),
                 (complexity_min, complexity_max),
-                self.adversaries_ds.read(how="diagonal", Expansion=expansion),
+                self.adversaries_ds.read(Expansion=expansion),
                 self.combinations_ds.read(
-                    how="diagonal",
                     Expansion=expansion,
                     Players=players,
                 ),

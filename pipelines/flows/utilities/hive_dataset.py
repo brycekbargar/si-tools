@@ -31,7 +31,6 @@ class HiveDataset:
     def read(
         self,
         low_memory: bool = False,  # noqa: FBT001, FBT002
-        how: typing.Literal["vertical", "diagonal"] = "vertical",
         **kwargs: typing.Any,
     ) -> pl.LazyFrame:
         """Creates a view into the dataset as a LazyFrame.
@@ -41,7 +40,6 @@ class HiveDataset:
 
         Args:
             low_memory: Reduce memory pressure at the expense of performance.
-            how: The polars.concat method to use for combining partitions.
             **kwargs: Contextual values. If given, the frame will be filtered
                 to that partition. Additionally, the given keys will be dropped
                 from the frame as they are constants.
@@ -53,24 +51,6 @@ class HiveDataset:
         if len(extra_keys) > 0:
             msg = f"Got extra partition keys: {"', '".join(extra_keys)}"
             raise KeyMismatchError(msg)
-
-        if how == "vertical":
-            if len(kwargs) == 0:
-                return pl.scan_parquet(
-                    self._dataset_path,
-                    low_memory=low_memory,
-                    hive_schema=self._schema,
-                )
-
-            return (
-                pl.scan_parquet(
-                    self._dataset_path,
-                    low_memory=low_memory,
-                    hive_schema=self._schema,
-                )
-                .filter(**kwargs)
-                .drop(kwargs.keys())
-            )
 
         # https://github.com/pola-rs/polars/issues/12508
         return pl.concat(
@@ -88,7 +68,7 @@ class HiveDataset:
                     ),
                 )
             ),
-            how=how,
+            how="diagonal_relaxed",
         ).drop(kwargs.keys())
 
     def write(

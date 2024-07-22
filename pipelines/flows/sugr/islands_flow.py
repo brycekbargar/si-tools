@@ -134,7 +134,7 @@ class SugrIslandsFlow(FlowSpec):
         self.islands_ds.write(
             generate_loose_islands(
                 self.layouts_ds.read(),
-                self.boards_ds.read(how="diagonal"),
+                self.boards_ds.read(),
             ),
         )
 
