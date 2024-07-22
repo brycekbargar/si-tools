@@ -1,6 +1,6 @@
-Escalation	Expansion	Matchup	Difficulty	Complexity
-Before Exploring, on each board, add 1 Town to a land without a Town.	1	Tier	1	1
-Before Exploring, on each board, build in the land with the most Towns/Cities (minimum one).	1	Tier	1	1
-After Exploring, on each board, pick a land of the shown terrain. If it has a Town/City, add 1 Blight. Otherwise, add 1 Town.	4	Tier	1	1
-After Exploring, on each board with 4 or fewer Blight, add 1 Town to a land without Towns/Blight. On each board with 2 or fewer Blight, do so again.	16	Tier	1	1
-After Advancing Invader Cards, on each board, Explore in 2 lands whose terrains don't match a Ravage or Build Card.	32	Tier	1	1
+Escalation	Expansion
+Before Exploring, on each board, add 1 Town to a land without a Town.	1
+Before Exploring, on each board, build in the land with the most Towns/Cities (minimum one).	1
+After Exploring, on each board, pick a land of the shown terrain. If it has a Town/City, add 1 Blight. Otherwise, add 1 Town.	4
+After Exploring, on each board with 4 or fewer Blight, add 1 Town to a land without Towns/Blight. On each board with 2 or fewer Blight, do so again.	16
+After Advancing Invader Cards, on each board, Explore in 2 lands whose terrains don't match a Ravage or Build Card.	32

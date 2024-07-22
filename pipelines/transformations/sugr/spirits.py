@@ -32,7 +32,7 @@ def spirits_by_expansions(expansions: int, spirits: pl.LazyFrame) -> pl.LazyFram
                     "Value": [0, 1, 2, 4],
                 },
                 schema={
-                    "Complexity": None,
+                    "Complexity": pl.String,
                     "Value": pl.Int8,
                 },
             ),
@@ -48,20 +48,20 @@ def calculate_matchups(matchup: str, spirits: pl.LazyFrame) -> pl.LazyFrame:
     """Calculate the difficulty modifiers and best/worst spirits for the matchup."""
     spirit_matchups = (
         spirits.clone()
-        .filter(pl.Expr.not_(pl.col(matchup).eq(pl.lit("Unplayable"))))
+        .filter(pl.Expr.not_(pl.col(matchup).eq(pl.lit("U"))))
         .join(
             pl.LazyFrame(
                 {
                     matchup: [
-                        "Counters",
-                        "Neutral",
-                        "Unfavored",
-                        "Top",
-                        "Mid+",
-                        "Mid-",
-                        "Bottom",
+                        "X",
+                        "S",
+                        "A",
+                        "B",
+                        "C",
+                        "D",
+                        "F",
                     ],
-                    "Difficulty": [-3, 0, 3, -3, -1, 1, 3],
+                    "Difficulty": [-4, -2, -1, 0, 1, 2, 4],
                 },
                 schema={
                     matchup: pl.Utf8,

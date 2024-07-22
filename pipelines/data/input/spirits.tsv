@@ -1,64 +1,65 @@
-Name	Aspect	Complexity	Expansions	Tier	France	Sweden	Scotland	Prussia	Livestock	England	Russia
-Lightning's Swift Strike		Low	1	Mid-	Neutral	Neutral	Neutral	Unfavored	Unplayable	Unfavored	Unplayable
-Lightning's Swift Strike	Sparking	Moderate	33	Mid-	Neutral	Neutral	Neutral	Unfavored	Unplayable	Unfavored	Unplayable
-Lightning's Swift Strike	Immense	Moderate	9	Botttom	Unfavored	Unplayable	Unfavored	Unplayable	Unplayable	Neutral	Unplayable
-Lightning's Swift Strike	Pandemonium	Low	17	Mid-	Counters	Neutral	Neutral	Unfavored	Unplayable	Unfavored	Unplayable
-River Surges in Sunlight		Low	1	Mid-	Neutral	Unfavored	Neutral	Neutral	Neutral	Unplayable	Neutral
-River Surges in Sunlight	Travel	Low	9	Mid+	Neutral	Unfavored	Neutral	Neutral	Neutral	Unplayable	Neutral
-River Surges in Sunlight	Haven	Low	33	Mid-	Neutral	Unfavored	Neutral	Neutral	Neutral	Unplayable	Neutral
-Vital Strength of the Earth		Low	1	Bottom	Neutral	Unplayable	Neutral	Unplayable	Unplayable	Unplayable	Unplayable
-Vital Strength of the Earth	Might	Moderate	9	Bottom	Neutral	Neutral	Neutral	Neutral	Unfavored	Unplayable	Neutral
-Vital Strength of the Earth	Resilience	Low	17	Bottom	Unplayable	Counters	Neutral	Unplayable	Unplayable	Unplayable	Unfavored
-Vital Strength of the Earth	Nourishing	Moderate	33	Mid+	Neutral	Neutral	Neutral	Neutral	Neutral	Neutral	Neutral
-Shadows Flicker Like Flame		Low	1	Bottom	Unfavored	Unfavored	Unplayable	Neutral	Unplayable	Unplayable	Unplayable
-Shadows Flicker Like Flame	Madness	Low	17	Bottom	Neutral	Unfavored	Neutral	Neutral	Unplayable	Unplayable	Unplayable
-Shadows Flicker Like Flame	Dark Fire	Moderate	33	Mid-	Neutral	Neutral	Neutral	Neutral	Neutral	Neutral	Neutral
-Shadows Flicker Like Flame	Foreboding	Moderate	9	Bottom	Unfavored	Unfavored	Unplayable	Neutral	Unplayable	Unplayable	Unplayable
-Sun-Bright Whirlwind		Low	2	Mid-	Neutral	Neutral	Neutral	Neutral	Unfavored	Unplayable	Neutral
-Eyes Watch from the Trees		Low	2	Mid+	Counters	Neutral	Counters	Counters	Neutral	Neutral	Unfavored
-Rising Heat of Stone and Sand		Low	2	Mid+	Neutral	Neutral	Counters	Neutral	Neutral	Unplayable	Unfavored
-Devouring Teeth Lurk Underfoot		Low	2	Bottom	Unfavored	Neutral	Unfavored	Neutral	Unfavored	Unfavored	Unplayable
-Fathomless Mud of the Swamp		Low	2	Mid-	Neutral	Neutral	Neutral	Counters	Unplayable	Counters	Unplayable
-Thunderspeaker		Moderate	1	Mid+	Counters	Neutral	Neutral	Neutral	Unfavored	Neutral	Unfavored
-Thunderspeaker	Warrior	Moderate	33	Mid-	Unfavored	Unfavored	Unfavored	Unfavored	Unfavored	Unfavored	Unfavored
-A Spread of Rampant Green		Moderate	1	Top	Neutral	Counters	Neutral	Neutral	Neutral	Neutral	Unfavored
-A Spread of Rampant Green	Tangles	Moderate	33	Mid+	Neutral	Counters	Neutral	Neutral	Neutral	Neutral	Unfavored
-A Spread of Rampant Green	Regrowth	Moderate	33	Mid+	Neutral	Counters	Neutral	Neutral	Neutral	Neutral	Unfavored
-Sharp Fangs Behind the Leaves		Moderate	4	Mid+	Neutral	Unfavored	Neutral	Neutral	Neutral	Neutral	Neutral
-Sharp Fangs Behind the Leaves	Encircle	Moderate	36	Mid+	Neutral	Unfavored	Neutral	Neutral	Neutral	Neutral	Neutral
-Sharp Fangs Behind the Leaves	Unconstrained	Moderate	36	Mid+	Neutral	Neutral	Neutral	Neutral	Neutral	Neutral	Neutral
-Keeper of the Forbidden Wilds		Moderate	4	Top	Neutral	Unplayable	Neutral	Neutral	Unfavored	Neutral	Counters
-Keeper of the Forbidden Wilds	Spreading Hostility	Moderate	36	Mid-	Neutral	Unfavored	Neutral	Neutral	Neutral	Neutral	Neutral
-Stone's Unyielding Defiance		Moderate	8	Top	Neutral	Neutral	Neutral	Neutral	Counters	Neutral	Counters
-Shifting Memory of Ages		Moderate	8	Mid-	Neutral	Unplayable	Unfavored	Unfavored	Unplayable	Unfavored	Unplayable
-Shifting Memory of Ages	Mentor	High	40	Mid-	Neutral	Neutral	Neutral	Neutral	Neutral	Neutral	Neutral
-Shifting Memory of Ages	Intensify	High	40	Mid-	Neutral	Neutral	Neutral	Neutral	Neutral	Neutral	Neutral
-Grinning Trickster Stirs Up Trouble		Moderate	8	Mid+	Counters	Counters	Neutral	Neutral	Unplayable	Neutral	Neutral
-Lure of the Deep Wilderness		Moderate	8	Mid+	Counters	Unfavored	Unfavored	Neutral	Neutral	Unfavored	Counters
-Lure of the Deep Wilderness	Lair	Moderate	40	Mid-	Neutral	Unfavored	Unplayable	Neutral	Neutral	Unplayable	Neutral
-Many Minds Move as One		Moderate	8	Top	Neutral	Counters	Counters	Neutral	Counters	Neutral	Neutral
-Volcano Looming High		Moderate	8	Mid+	Neutral	Neutral	Neutral	Neutral	Unfavored	Unfavored	Neutral
-Ember-Eyed Behemoth		Moderate	32	Mid+	Neutral	Neutral	Neutral	Neutral	Neutral	Neutral	Neutral
-Towering Roots of the Jungle		Moderate	32	Top	Neutral	Unfavored	Neutral	Neutral	Unfavored	Neutral	Neutral
-Hearth-Vigil		Moderate	32	Top	Neutral	Neutral	Neutral	Neutral	Neutral	Neutral	Neutral
-Ocean's Hungry Grasp		High	1	Mid-	Neutral	Unplayable	Unfavored	Unfavored	Unplayable	Unfavored	Unplayable
-Ocean's Hungry Grasp	Deeps	High	33	Mid-	Neutral	Unplayable	Unfavored	Unfavored	Unplayable	Unfavored	Unplayable
-Bringer of Dreams and Nightmares		High	1	Bottom	Unfavored	Unplayable	Unplayable	Unfavored	Unplayable	Unplayable	Unplayable
-Bringer of Dreams and Nightmares	Enticing	High	33	Mid-	Neutral	Unplayable	Neutral	Unfavored	Neutral	Unplayable	Neutral
-Bringer of Dreams and Nightmares	Violence	High	33	Mid+	Unfavored	Unplayable	Neutral	Neutral	Unplayable	Unplayable	Unplayable
-Heart of the Wildfire		High	16	Bottom	Neutral	Neutral	Unfavored	Neutral	Neutral	Unplayable	Unplayable
-Heart of the Wildfire	Transforming	High	48	Mid+	Neutral	Neutral	Neutral	Neutral	Neutral	Unfavored	Unfavored
-Serpent Slumbering Beneath the Island		High	16	Mid+	Neutral	Unplayable	Neutral	Neutral	Unfavored	Neutral	Neutral
-Serpent Slumbering Beneath the Island	Locus	High	48	Mid+	Neutral	Unfavored	Neutral	Neutral	Unfavored	Neutral	Neutral
-Shroud of Silent Mist		High	8	Mid-	Unplayable	Neutral	Unfavored	Neutral	Unplayable	Unfavored	Unfavored
-Shroud of Silent Mist	Stranded	High	40	Bottom	Neutral	Neutral	Neutral	Neutral	Neutral	Unfavored	Unfavored
-Vengeance as a Burning Plague		High	8	Mid+	Neutral	Neutral	Neutral	Neutral	Neutral	Neutral	Neutral
-Downpour Drenches the World		High	16	Top	Neutral	Neutral	Neutral	Counters	Neutral	Neutral	Neutral
-Breath of Darkness Down Your Spine		High	32	Mid+	Neutral	Neutral	Neutral	Neutral	Neutral	Neutral	Neutral
-Relentless Gaze of the Sun		High	32	Top	Neutral	Neutral	Neutral	Neutral	Neutral	Neutral	Neutral
-Wandering Voice Keens Delirium		High	32	Mid+	Counters	Neutral	Neutral	Neutral	Neutral	Neutral	Neutral
-Wounded Waters Bleeding		High	32	Mid-	Neutral	Neutral	Neutral	Neutral	Neutral	Neutral	Neutral
-Starlight Seeks Its Form		Very High	8	Top	Neutral	Counters	Counters	Neutral	Neutral	Neutral	Counters
-Fractured Days Split the Sky		Very High	8	Top	Neutral	Counters	Neutral	Neutral	Unfavored	Neutral	Unfavored
-Finder of Paths Unseen		Very High	16	Mid+	Unfavored	Neutral	Neutral	Neutral	Neutral	Unfavored	Unplayable
-Dances Up Earthquakes		Very High	32	Top	Neutral	Neutral	Neutral	Neutral	Neutral	Neutral	Neutral
+Name	Aspect	Complexity	Expansions	Tier	France	Sweden	Scotland	Prussia	Livestock	England	Russia	Mines
+Lightning's Swift Strike		Low	1	C	B	C	C	C	F	F	F	C
+Lightning's Swift Strike	Sparking	Moderate	33	A	A	B	B	A	A	A	A	A
+Lightning's Swift Strike	Immense	Moderate	9	D	C	F	A	C	F	B	C	C
+Lightning's Swift Strike	Pandemonium	Low	17	C	X	A	A	C	F	A	F	C
+River Surges in Sunlight		Low	1	B	B	C	C	B	B	F	B	C
+River Surges in Sunlight	Travel	Low	9	A	A	B	B	A	B	F	A	C
+River Surges in Sunlight	Haven	Low	33	B	B	C	A	A	F	B	B	A
+Vital Strength of the Earth		Low	1	F	B	B	B	D	C	F	F	B
+Vital Strength of the Earth	Might	Moderate	9	B	B	A	A	B	C	C	B	C
+Vital Strength of the Earth	Resilience	Low	17	F	F	A	A	D	B	F	C	B
+Vital Strength of the Earth	Nourishing	Moderate	33	A	A	A	X	A	B	B	A	A
+Shadows Flicker Like Flame		Low	1	F	F	F	F	F	F	U	F	F
+Shadows Flicker Like Flame	Madness	Low	17	D	C	C	F	F	F	U	F	F
+Shadows Flicker Like Flame	Dark Fire	Moderate	33	C	C	F	F	F	F	C	F	F
+Shadows Flicker Like Flame	Foreboding	Moderate	9	D	C	F	F	C	F	F	C	F
+Sun-Bright Whirlwind		Low	2	B	X	B	B	A	B	F	A	C
+Eyes Watch from the Trees		Low	2	A	A	A	X	A	B	A	B	X
+Rising Heat of Stone and Sand		Low	2	B	A	X	X	A	B	C	B	B
+Devouring Teeth Lurk Underfoot		Low	2	D	B	A	B	B	C	C	F	C
+Fathomless Mud of the Swamp		Low	2	B	A	B	B	X	C	X	U	C
+Thunderspeaker		Moderate	1	B	X	B	A	A	C	B	B	C
+Thunderspeaker	Tactician	Moderate	33	C	B	B	A	A	C	F	C	C
+Thunderspeaker	Warrior	Moderate	33	C	B	B	C	B	C	C	C	B
+A Spread of Rampant Green		Moderate	1	X	X	X	X	B	B	B	B	B
+A Spread of Rampant Green	Tangles	Moderate	33	A	X	X	X	A	B	B	A	A
+A Spread of Rampant Green	Regrowth	Moderate	33	X	A	X	X	C	X	B	C	C
+Sharp Fangs Behind the Leaves		Moderate	4	B	B	B	B	B	A	A	B	C
+Sharp Fangs Behind the Leaves	Encircle	Moderate	36	B	B	B	A	B	A	C	A	B
+Sharp Fangs Behind the Leaves	Unconstrained	Moderate	36	B	B	B	B	B	A	A	B	C
+Keeper of the Forbidden Wilds		Moderate	4	S	A	B	A	B	A	A	X	B
+Keeper of the Forbidden Wilds	Spreading Hostility	Moderate	36	B	A	B	B	A	F	C	B	B
+Stone's Unyielding Defiance		Moderate	8	X	B	B	X	A	X	A	X	B
+Shifting Memory of Ages		Moderate	8	C	B	F	C	B	F	B	C	C
+Shifting Memory of Ages	Mentor	High	40	C	B	F	F	F	F	C	F	F
+Shifting Memory of Ages	Intensify	High	40	A	B	A	A	B	A	A	B	B
+Grinning Trickster Stirs Up Trouble		Moderate	8	A	X	X	A	A	C	B	A	B
+Lure of the Deep Wilderness		Moderate	8	A	X	C	C	A	B	A	X	A
+Lure of the Deep Wilderness	Lair	Moderate	40	B	A	B	B	A	B	C	B	C
+Many Minds Move as One		Moderate	8	S	A	X	X	A	X	A	A	B
+Volcano Looming High		Moderate	8	A	A	A	X	A	B	B	B	A
+Ember-Eyed Behemoth		Moderate	32	B	X	X	A	A	B	B	B	A
+Towering Roots of the Jungle		Moderate	32	S	A	B	X	A	X	A	B	B
+Hearth-Vigil		Moderate	32	X	X	A	A	X	X	A	B	X
+Ocean's Hungry Grasp		High	1	C	A	F	C	A	F	C	C	F
+Ocean's Hungry Grasp	Deeps	High	33	C	A	F	C	A	F	F	C	F
+Bringer of Dreams and Nightmares		High	1	D	C	C	F	B	F	C	F	U
+Bringer of Dreams and Nightmares	Enticing	High	33	B	B	D	B	B	A	C	A	F
+Bringer of Dreams and Nightmares	Violence	High	33	B	B	C	B	A	F	C	F	U
+Heart of the Wildfire		High	16	D	B	A	C	B	B	U	F	C
+Heart of the Wildfire	Transforming	High	48	B	B	A	C	B	A	C	A	C
+Serpent Slumbering Beneath the Island		High	16	A	C	B	B	A	C	A	C	B
+Serpent Slumbering Beneath the Island	Locus	High	48	B	F	F	F	C	F	C	C	C
+Shroud of Silent Mist		High	8	D	C	B	C	B	U	F	C	C
+Shroud of Silent Mist	Stranded	High	40	B	A	A	A	B	B	B	B	C
+Vengeance as a Burning Plague		High	8	B	A	A	A	B	A	B	B	B
+Downpour Drenches the World		High	16	S	A	A	A	X	B	B	A	B
+Breath of Darkness Down Your Spine		High	32	B	X	A	B	A	C	B	B	C
+Relentless Gaze of the Sun		High	32	S	A	X	X	A	X	A	X	B
+Wandering Voice Keens Delirium		High	32	A	A	X	B	B	C	B	F	F
+Wounded Waters Bleeding		High	32	B	B	F	C	C	C	C	B	F
+Starlight Seeks Its Form		Very High	8	S	A	X	X	B	X	A	X	B
+Fractured Days Split the Sky		Very High	8	X	B	X	A	C	B	B	B	B
+Finder of Paths Unseen		Very High	16	A	B	X	X	X	A	B	B	C
+Dances Up Earthquakes		Very High	32	X	B	X	X	B	A	A	A	B

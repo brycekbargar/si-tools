@@ -23,8 +23,7 @@ class SugrGamesFlow(FlowSpec):
     param_input = Parameter("input", required=True, type=str)
     param_keep = Parameter("keep", default=False)
     param_player_limit = Parameter("player-limit", default=6)
-    # TODO: Set this to the real defaults
-    param_subset = Parameter("subset", default=True)
+    param_subset = Parameter("subset", default=False)
 
     @step
     def start(self) -> None:
@@ -70,7 +69,7 @@ class SugrGamesFlow(FlowSpec):
 
         exp = pl.scan_csv(self.expansions_tsv, separator="\t")
         if self.param_subset:
-            exp = exp.filter(pl.col("Value").is_in([1, 2, 13, 14, 31]))
+            exp = exp.filter(pl.col("Value").is_in([1, 2, 13, 14, 31, 49]))
         self.expansions = exp.select("Value", "Players").collect(streaming=True).rows()
 
         self.adversaries_ds = HiveDataset(
@@ -157,6 +156,7 @@ class SugrGamesFlow(FlowSpec):
         from transformations.sugr.spirits import generate_combinations
 
         for pc in range(self.max_players):
+            print(self.expansion, self.matchup, pc + 1)
             if pc == 0:
                 self.combinations_ds.write(
                     generate_combinations(
@@ -218,6 +218,8 @@ class SugrGamesFlow(FlowSpec):
                 ),
             ),
         )
+
+        print(self.buckets)
 
         self.next(self.bucket_games, foreach="buckets")
 

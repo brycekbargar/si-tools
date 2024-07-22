@@ -15,7 +15,7 @@ def adversaries_by_expansions(
     With three or fewer adveraries the list will be padded with additional
     escalations based on adversaries not already included.
 
-    With more than four adversaries, if one is France level 5 & 6 will be removed.
+    With more than four adversaries, France level 5 & 6 will be removed.
     """
     adversaries = (
         adversaries.clone()
@@ -44,8 +44,9 @@ def adversaries_by_expansions(
                     .drop("Expansion")
                     .with_columns(
                         [
-                            pl.col("Difficulty").cast(pl.Int8),
-                            pl.col("Complexity").cast(pl.Int8),
+                            pl.lit(1).cast(pl.Int8).alias("Difficulty"),
+                            pl.lit(0).cast(pl.Int8).alias("Complexity"),
+                            pl.lit("Tier").alias("Matchup"),
                         ],
                     )
                 ),
