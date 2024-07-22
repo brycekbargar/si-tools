@@ -1,32 +1,34 @@
 """Provides operations on LazyFrames finalizing Spirit Island games."""
 
 import gc
+import typing
 
 import polars as pl
 
 
-def define_buckets(
+def create_games(
     adversaries: pl.LazyFrame,
     combos: pl.LazyFrame,
-) -> tuple[int, int, int, float, float, int, float, float]:
-    """Find difficulty/complexity ranges to bucket games into."""
+) -> pl.LazyFrame:
+    """Creates games from adversaries/spirits based on matchups, filtering outliers."""
     all_games = (
         adversaries.clone()
-        .join(combos.clone(), on=["Expansion", "Matchup"])
-        .with_columns(
-            [
-                pl.col("Difficulty").add(pl.col("Difficulty_right")),
-                pl.col("Complexity").add(pl.col("Complexity_right")).truediv(pl.lit(2)),
-            ],
+        .join(
+            combos.clone().drop("Difficulty", "Complexity", "Hash"),
+            on=["Expansion", "Matchup"],
         )
-        .drop("Difficulty_right", "Complexity_right", "Matchup")
+        .with_columns(
+            pl.col("NDifficulty").add(pl.col("Difficulty")),
+            pl.col("NComplexity").add(pl.col("Difficulty")).truediv(pl.lit(2)),
+        )
+        .drop("Difficulty", "Complexity", "Matchup")
     )
 
     distribution = all_games.clone().select(
-        pl.col("Difficulty").mean().alias("Difficulty Mean"),
-        pl.col("Difficulty").std().alias("Difficulty Std"),
-        pl.col("Complexity").mean().alias("Complexity Mean"),
-        pl.col("Complexity").std().alias("Complexity Std"),
+        pl.col("NDifficulty").mean().alias("DStd"),
+        pl.col("NDifficulty").std().alias("DMean"),
+        pl.col("NComplexity").mean().alias("CStd"),
+        pl.col("NComplexity").std().alias("CMean"),
     )
     (dmean, dstddev, cmean, cstddev) = distribution.collect(streaming=True).row(0)
     min_difficulty = dmean - 2 * dstddev
@@ -36,87 +38,65 @@ def define_buckets(
     del distribution
     gc.collect()
 
-    buckets = (
-        all_games.clone()
-        .filter(
-            pl.col("Difficulty").gt(min_difficulty)
-            & pl.col("Difficulty").lt(max_difficulty)
-            & pl.col("Complexity").gt(min_complexity)
-            & pl.col("Complexity").lt(max_complexity),
-        )
-        .with_columns(
-            [
-                pl.col("Difficulty")
-                .qcut(5, labels=["0", "1", "2", "3", "4"])
-                .cast(pl.Utf8)
-                .str.to_integer()
-                .cast(pl.Int8)
-                .alias("Difficulty Bucket"),
-                pl.col("Complexity")
-                .qcut(3, labels=["0", "1", "2"])
-                .cast(pl.Utf8)
-                .str.to_integer()
-                .cast(pl.Int8)
-                .alias("Complexity Bucket"),
-            ],
-        )
-        .group_by("Expansion", "Players", "Difficulty Bucket", "Complexity Bucket")
-        .agg(
-            pl.min("Difficulty").alias("Min Difficulty"),
-            pl.max("Difficulty").alias("Max Difficulty"),
-            pl.min("Complexity").alias("Min Complexity"),
-            pl.max("Complexity").alias("Max Complexity"),
-        )
-        .select(
-            "Expansion",
-            "Players",
-            "Difficulty Bucket",
-            "Min Difficulty",
-            "Max Difficulty",
-            "Complexity Bucket",
-            "Min Complexity",
-            "Max Complexity",
-        )
+    # sink_parquet doesn't support streaming filtering by std/mean as of 1.1
+    return all_games.filter(
+        pl.col("NDifficulty").ge(pl.lit(min_difficulty))
+        & pl.col("NDifficulty").le(pl.lit(max_difficulty))
+        & pl.col("NComplexity").ge(pl.lit(min_complexity))
+        & pl.col("NComplexity").le(pl.lit(max_complexity)),
     )
 
-    collected_buckets = buckets.collect(streaming=True).rows()
-    del all_games
-    del buckets
-    gc.collect()
 
-    return collected_buckets  # type: ignore[reportReturnType]
+def define_buckets(
+    all_games: pl.LazyFrame,
+) -> typing.Iterator[tuple[int, float, float, int, float, float]]:
+    """Find difficulty/complexity ranges to bucket games into."""
+    # sink_parquet doesn't support streaming qcut as of 1.1
+    (difficulty, complexity) = pl.collect_all(
+        [
+            all_games.clone()
+            .with_columns(
+                pl.col("NDifficulty")
+                .qcut(5, labels=["0", "1", "2", "3", "4"], include_breaks=True)
+                .alias("qcut"),
+            )
+            .unnest("qcut")
+            .select("breakpoint", "category")
+            .unique(),
+            all_games.clone()
+            .with_columns(
+                pl.col("NComplexity")
+                .qcut(3, labels=["0", "1", "2"], include_breaks=True)
+                .alias("qcut"),
+            )
+            .unnest("qcut")
+            .select("breakpoint", "category")
+            .unique(),
+        ],
+        streaming=True,
+    )
+
+    d_min = -99
+    for d_max, d in difficulty.sort("category").rows():
+        c_min = -99
+        for c_max, c in complexity.sort("category").rows():
+            yield (d, d_min, d_max, c, c_min, c_max)
+            c_min = c_max
+        d_min = d_max
 
 
 def filter_by_bucket(
     difficulty: tuple[float, float],
     complexity: tuple[float, float],
-    adversaries: pl.LazyFrame,
-    combos: pl.LazyFrame,
+    all_games: pl.LazyFrame,
 ) -> pl.LazyFrame:
     """Filter the given set of games to bucket based on difficulty/complexity."""
-    return (
-        adversaries.clone()
-        .join(combos.clone(), on="Matchup")
-        .with_columns(
-            [
-                pl.col("Difficulty").add(pl.col("Difficulty_right")),
-                pl.col("Complexity").add(pl.col("Complexity_right")).truediv(pl.lit(2)),
-            ],
-        )
-        .filter(
-            pl.col("Difficulty").ge(difficulty[0])
-            & pl.col("Difficulty").le(difficulty[1])
-            & pl.col("Complexity").ge(complexity[0])
-            & pl.col("Complexity").le(complexity[1]),
-        )
-        .drop(
-            "Difficulty_right",
-            "Difficulty",
-            "NDifficulty",
-            "Complexity_right",
-            "Complexity",
-            "NComplexity",
-            "Hash",
-            "Matchup",
-        )
+    return all_games.filter(
+        pl.col("NDifficulty").gt(difficulty[0])
+        & pl.col("NDifficulty").le(difficulty[1])
+        & pl.col("NComplexity").gt(complexity[0])
+        & pl.col("NComplexity").le(complexity[1]),
+    ).drop(
+        "NDifficulty",
+        "NComplexity",
     )

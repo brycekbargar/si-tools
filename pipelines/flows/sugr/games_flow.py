@@ -208,22 +208,24 @@ class SugrGamesFlow(FlowSpec):
 
     @step
     def fanout_buckets(self) -> None:
-        from transformations.sugr.games import define_buckets
+        from transformations.sugr.games import create_games, define_buckets
 
-        self.buckets = define_buckets(
-            self.adversaries_ds.read(),
-            self.combinations_ds.read(),
+        self.buckets = list(
+            define_buckets(
+                create_games(
+                    self.adversaries_ds.read(),
+                    self.combinations_ds.read(low_memory=True),
+                ),
+            ),
         )
 
         self.next(self.bucket_games, foreach="buckets")
 
     @step
     def bucket_games(self) -> None:
-        from transformations.sugr.games import filter_by_bucket
+        from transformations.sugr.games import create_games, filter_by_bucket
 
         (
-            expansion,
-            players,
             difficulty,
             difficulty_min,
             difficulty_max,
@@ -231,7 +233,7 @@ class SugrGamesFlow(FlowSpec):
             complexity_min,
             complexity_max,
         ) = typing.cast(
-            tuple[int, int, int, float, float, int, float, float],
+            tuple[int, float, float, int, float, float],
             self.input,
         )
 
@@ -239,14 +241,11 @@ class SugrGamesFlow(FlowSpec):
             filter_by_bucket(
                 (difficulty_min, difficulty_max),
                 (complexity_min, complexity_max),
-                self.adversaries_ds.read(Expansion=expansion),
-                self.combinations_ds.read(
-                    Expansion=expansion,
-                    Players=players,
+                create_games(
+                    self.adversaries_ds.read(),
+                    self.combinations_ds.read(low_memory=True),
                 ),
             ),
-            Expansion=expansion,
-            Players=players,
             Difficulty=difficulty,
             Complexity=complexity,
         )
