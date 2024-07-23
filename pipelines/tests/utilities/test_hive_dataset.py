@@ -284,3 +284,33 @@ def test_read(
         results = dataset.read(**read_opts).collect(streaming=True)
         assert dict(results.schema) == expected_schema
         assert results.height == expected
+
+
+def test_partitions() -> None:
+    with tempfile.TemporaryDirectory() as tmpdir:
+        name = str(uuid4())
+        dataset = uut(tmpdir, name, key1=pl.Int8, key2=pl.Int8, key3=pl.Int8)  # type: ignore[reportArgumentType]
+
+        data = pl.DataFrame(
+            {
+                "key1": [11, 11, 11, 11, 11, 12, 12, 12, 13],
+                "key2": [21, 21, 21, 22, 22, 23, 23, 24, 25],
+                "key3": [31, 31, 32, 33, 34, 35, 35, 36, 37],
+                "non-key": [
+                    112131,
+                    1121312,
+                    112132,
+                    112233,
+                    112234,
+                    122335,
+                    1223352,
+                    122436,
+                    132537,
+                ],
+            },
+        )
+        dataset.write(data.lazy())
+
+        partitions = dataset.partitions()
+        assert len(partitions) == data.height - 2
+        assert partitions[3] == (11, 22, 34)

@@ -28,6 +28,14 @@ class HiveDataset:
         self._schema = kwargs
         self._keys = list(kwargs.keys())
 
+    def path(self) -> Path:
+        """The root path of the dataset."""
+        return self._dataset_path
+
+    def keys(self) -> list[str]:
+        """Immutable list of the keys."""
+        return self._keys.copy()
+
     def read(
         self,
         low_memory: bool = False,  # noqa: FBT001, FBT002
@@ -139,3 +147,11 @@ class HiveDataset:
             )
             del partition
             gc.collect()
+
+    def partitions(self) -> list[tuple[typing.Any, ...]]:
+        uniques = self.read().select(self._keys).unique().sort(*self._keys)
+        values = uniques.collect(streaming=True).rows()
+        del uniques
+        gc.collect()
+
+        return values
