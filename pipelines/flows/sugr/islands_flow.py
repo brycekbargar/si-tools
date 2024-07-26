@@ -14,7 +14,7 @@ __OUTPUT_ARTIFACTS__ = ("ephemeral", "islands_ds")
 __DATASETS__ = ("boards_ds", "layouts_ds")
 
 
-@conda_base(python=">=3.12,<3.13", packages={"polars": "==1.2.0"})
+@conda_base(python=">=3.12,<3.13", packages={"polars": "==1.2.1"})
 class SugrIslandsFlow(FlowSpec):
     param_input = Parameter("input", required=True, type=str)
     param_keep = Parameter("keep", default=False)
@@ -48,10 +48,10 @@ class SugrIslandsFlow(FlowSpec):
             ),
         )
 
-        self.next(self.branch_islandtype)
+        self.next(self.branch_islandtypes)
 
     @step
-    def branch_islandtype(self) -> None:
+    def branch_islandtypes(self) -> None:
         self.next(self.branch_loose_board_islands, self.fixed_board_islands)
 
     @step

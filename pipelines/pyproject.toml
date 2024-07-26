@@ -6,7 +6,7 @@ authors = [
     {name = "bryce", email = "brycekbargar@gmail.com"},
 ]
 dependencies = [
-    "polars==1.2.0",
+    "polars[pyarrow]==1.2.1",
     "metaflow==2.12.8",
     "pylint==3.2.5",
 ]
@@ -28,6 +28,7 @@ dev = [
 test = "python -m pytest -vv"
 flow_islands = "python -m flows.sugr.islands_flow --environment=conda run --input ./data/input/"
 flow_games = "python -m flows.sugr.games_flow --environment=conda run --input ./data/input/"
+flow_site = "python -m flows.site.sugr_flow --environment=conda run --output ./../site/data/"
 
 [tool.ruff]
 target-version = "py312"

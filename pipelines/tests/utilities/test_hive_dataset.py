@@ -313,4 +313,6 @@ def test_partitions() -> None:
 
         partitions = dataset.partitions()
         assert len(partitions) == data.height - 2
-        assert partitions[3] == (11, 22, 34)
+        assert partitions[3]["key1"] == 11
+        assert partitions[3]["key2"] == 22
+        assert partitions[3]["key3"] == 34

@@ -148,9 +148,9 @@ class HiveDataset:
             del partition
             gc.collect()
 
-    def partitions(self) -> list[tuple[typing.Any, ...]]:
+    def partitions(self) -> list[dict[str, typing.Any]]:
         uniques = self.read().select(self._keys).unique().sort(*self._keys)
-        values = uniques.collect(streaming=True).rows()
+        values = uniques.collect(streaming=True).rows(named=True)
         del uniques
         gc.collect()
 
