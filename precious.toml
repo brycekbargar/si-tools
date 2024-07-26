@@ -2,24 +2,26 @@
 [commands."common.EOF"]
 type = "tidy"
 include = ["*"]
-exclude = ["*.parquet", "*.feather"]
+exclude = ["*.feather"]
 cmd = ["end-of-file-fixer"]
 ok_exit_codes = [0, 1]
 [commands."common.whitespace"]
 type = "tidy"
 include = ["*"]
-exclude = ["*.parquet", "*.feather"]
+exclude = ["*.feather"]
 cmd = ["trailing-whitespace-fixer", "--markdown-linebreak-ext=md"]
 ok_exit_codes = [0, 1]
 [commands."common.large-files"]
 type = "lint"
 include = ["*"]
 cmd = ["check-added-large-files"]
+exclude = ["*.feather"]
 ok_exit_codes = [0]
 [commands."common.case"]
 type = "lint"
 include = ["*"]
 cmd = ["check-case-conflict"]
+exclude = ["*.feather"]
 ok_exit_codes = [0]
 
 [commands."quicklintjs.lint"]
