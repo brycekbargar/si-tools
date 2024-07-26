@@ -1,19 +1,19 @@
 Name	Aspect	Complexity	Expansions	Tier	France	Sweden	Scotland	Prussia	Livestock	England	Russia	Mines
 Lightning's Swift Strike		Low	1	C	B	C	C	C	F	F	F	C
-Lightning's Swift Strike	Sparking	Moderate	33	A	A	B	B	A	A	A	A	A
-Lightning's Swift Strike	Immense	Moderate	9	D	C	F	A	C	F	B	C	C
+Lightning's Swift Strike	Sparking	Low	33	A	A	B	B	A	A	A	A	A
+Lightning's Swift Strike	Immense	Low	9	D	C	F	A	C	F	B	C	C
 Lightning's Swift Strike	Pandemonium	Low	17	C	X	A	A	C	F	A	F	C
 River Surges in Sunlight		Low	1	B	B	C	C	B	B	F	B	C
 River Surges in Sunlight	Travel	Low	9	A	A	B	B	A	B	F	A	C
 River Surges in Sunlight	Haven	Low	33	B	B	C	A	A	F	B	B	A
 Vital Strength of the Earth		Low	1	F	B	B	B	D	C	F	F	B
-Vital Strength of the Earth	Might	Moderate	9	B	B	A	A	B	C	C	B	C
+Vital Strength of the Earth	Might	Low	9	B	B	A	A	B	C	C	B	C
 Vital Strength of the Earth	Resilience	Low	17	F	F	A	A	D	B	F	C	B
-Vital Strength of the Earth	Nourishing	Moderate	33	A	A	A	X	A	B	B	A	A
+Vital Strength of the Earth	Nourishing	Low	33	A	A	A	X	A	B	B	A	A
 Shadows Flicker Like Flame		Low	1	F	F	F	F	F	F	U	F	F
 Shadows Flicker Like Flame	Madness	Low	17	D	C	C	F	F	F	U	F	F
-Shadows Flicker Like Flame	Dark Fire	Moderate	33	C	C	F	F	F	F	C	F	F
-Shadows Flicker Like Flame	Foreboding	Moderate	9	D	C	F	F	C	F	F	C	F
+Shadows Flicker Like Flame	Dark Fire	Low	33	C	C	F	F	F	F	C	F	F
+Shadows Flicker Like Flame	Foreboding	Low	9	D	C	F	F	C	F	F	C	F
 Sun-Bright Whirlwind		Low	2	B	X	B	B	A	B	F	A	C
 Eyes Watch from the Trees		Low	2	A	A	A	X	A	B	A	B	X
 Rising Heat of Stone and Sand		Low	2	B	A	X	X	A	B	C	B	B
@@ -33,7 +33,7 @@ Keeper of the Forbidden Wilds	Spreading Hostility	Moderate	36	B	A	B	B	A	F	C	B	B
 Stone's Unyielding Defiance		Moderate	8	X	B	B	X	A	X	A	X	B
 Shifting Memory of Ages		Moderate	8	C	B	F	C	B	F	B	C	C
 Shifting Memory of Ages	Mentor	High	40	C	B	F	F	F	F	C	F	F
-Shifting Memory of Ages	Intensify	High	40	A	B	A	A	B	A	A	B	B
+Shifting Memory of Ages	Intensify	Moderate	40	A	B	A	A	B	A	A	B	B
 Grinning Trickster Stirs Up Trouble		Moderate	8	A	X	X	A	A	C	B	A	B
 Lure of the Deep Wilderness		Moderate	8	A	X	C	C	A	B	A	X	A
 Lure of the Deep Wilderness	Lair	Moderate	40	B	A	B	B	A	B	C	B	C
