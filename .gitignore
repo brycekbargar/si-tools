@@ -1,5 +1,4 @@
 *.parquet
-*.feather
 .ipynb_checkpoints
 
 ### Managed using gig (https://github.com/shihanng/gig) ###
