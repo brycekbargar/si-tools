@@ -15,5 +15,8 @@
     "url": "https://github.com/brycekbargar/si-tools/issues"
   },
   "homepage": "https://github.com/brycekbargar/si-tools#readme",
-  "description": ""
+  "description": "",
+  "devDependencies": {
+    "prettier": "^3.3.3"
+  }
 }

@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>SI Uh-pinionated Setup Randomizer</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="description" content="" />
+
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css?family=Roboto:300,300italic,700,700italic"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.1/normalize.css"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/milligram/1.4.1/milligram.css"
+    />
+    <style>
+      #gameSelector button {
+        width: 75%;
+      }
+      #players {
+        width: 30%;
+      }
+    </style>
+
+    <script
+      src="https://cdn.jsdelivr.net/npm/apache-arrow@17.0.0/Arrow.es2015.min.js"
+      integrity="sha256-N1+3yJHiVnfAIeWF1OxRpXUhErGC9B1RBxuEAeWQN54="
+      crossorigin="anonymous"
+    ></script>
+  </head>
+  <body>
+    <div class="container" id="gameSelector">
+      <select id="players">
+        <option value="2" selected="selected">Two Players</option>
+        <option value="3">Bonus Spirit</option>
+        <option value="4">Two Handed</option>
+      </select>
+      <div class="row">
+        <div class="column">
+          <button class="button" data-difficulty="1" data-complexity="0">
+            Fun
+          </button>
+        </div>
+        <div class="column">
+          <button class="button" data-difficulty="1" data-complexity="1">
+            Weird
+          </button>
+        </div>
+        <div class="column">
+          <button class="button" data-difficulty="1" data-complexity="2">
+            Brain-Melting
+          </button>
+        </div>
+      </div>
+      <div class="row">
+        <div class="column">
+          <button class="button" data-difficulty="2" data-complexity="0">
+            Easy
+          </button>
+        </div>
+        <div class="column">
+          <button class="button" data-difficulty="2" data-complexity="1">
+            Normal
+          </button>
+        </div>
+        <div class="column">
+          <button class="button" data-difficulty="2" data-complexity="2">
+            Hard
+          </button>
+        </div>
+      </div>
+      <div class="row">
+        <div class="column">
+          <button class="button" data-difficulty="3" data-complexity="0">
+            Quick
+          </button>
+        </div>
+        <div class="column">
+          <button class="button" data-difficulty="3" data-complexity="1">
+            Straightforward
+          </button>
+        </div>
+        <div class="column">
+          <button class="button" data-difficulty="3" data-complexity="2">
+            Punishing
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="container" id="game" hidden>
+      <h3 id="adversary"></h3>
+      <ul id="spirits"></ul>
+
+      <br />
+
+      <h3 id="layout"></h3>
+      <ul id="boards"></ul>
+    </div>
+
+    <script type="text/javascript">
+      const sugr = (window.sugr = {});
+
+      async function randomGame() {
+        const players = document.getElementById("players").value;
+        const difficulty = this.dataset.difficulty;
+        const complexity = this.dataset.complexity;
+
+        const games = (sugr.games = await Arrow.tableFromIPC(
+          fetch(
+            `data/games/Expansion=31/Players=${players}/Difficulty=${difficulty}/Complexity=${complexity}/0.feather`,
+          ),
+        ));
+        const randomGame = Math.floor(Math.random() * games.numRows);
+        game = games.get(randomGame);
+
+        document.getElementById("adversary").innerHTML =
+          `${game["Adversary"]} Level ${game["Level"]}`;
+        document.getElementById("spirits").innerHTML = "";
+        for (let i = 0; i < players; i++) {
+          const spirit = document.createElement("li");
+          spirit.innerHTML = game[`Spirit_${i}`];
+          document.getElementById("spirits").appendChild(spirit);
+        }
+
+        const islands = (sugr.islands = await Arrow.tableFromIPC(
+          fetch(`data/islands/Type=6B/Players=${players}/0.feather`),
+        ));
+        const randomIsland = Math.floor(Math.random() * islands.numRows);
+        island = islands.get(randomIsland);
+
+        document.getElementById("layout").innerHTML = island["Layout"];
+        document.getElementById("boards").innerHTML = "";
+        for (let i = 0; i < players; i++) {
+          const board = document.createElement("li");
+          board.innerHTML = island[`Board_${i}`];
+          document.getElementById("boards").appendChild(board);
+        }
+
+        document.getElementById("game").hidden = false;
+      }
+
+      (function () {
+        document
+          .querySelectorAll("#gameSelector button")
+          .forEach((btn) => btn.addEventListener("click", randomGame));
+      })();
+    </script>
+  </body>
+</html>
