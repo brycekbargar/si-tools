@@ -10,7 +10,7 @@ from metaflow import (
 )
 
 
-@conda_base(python=">=3.12,<3.13", packages={"polars": "==1.1.0"})
+@conda_base(python=">=3.12,<3.13", packages={"polars": "==1.2.1", "pyarrow": "17.0.0"})
 @trigger_on_finish(flows=["SugrIslandsFlow", "SugrGamesFlow"])
 class SiteSugrFlow(FlowSpec):
     param_output = Parameter("output", required=True, type=str)
@@ -18,6 +18,7 @@ class SiteSugrFlow(FlowSpec):
     @step
     def start(self) -> None:
         import os
+        import shutil
         from pathlib import Path
 
         from utilities.working_dir import WorkingDirectory
@@ -28,6 +29,10 @@ class SiteSugrFlow(FlowSpec):
         )
 
         self.output = Path(typing.cast(str, self.param_output))
+        if (io := self.output / "islands").exists():
+            shutil.rmtree(io)
+        if (go := self.output / "games").exists():
+            shutil.rmtree(go)
 
         self.ephemeral = temp.push_segment("ephemeral")
         os.environ["POLARS_TEMP_DIR"] = str(
@@ -48,46 +53,82 @@ class SiteSugrFlow(FlowSpec):
         ].data.islands_ds
         self.games_ds: HiveDataset = current.trigger["SugrGamesFlow"].data.games_ds  # pyright: ignore [reportAttributeAccessIssue]
 
-        self.next(self.package_islands, self.package_games)
+        self.next(self.fanout_islands, self.fanout_games)
+
+    @step
+    def fanout_islands(self) -> None:
+        self.partitions = self.islands_ds.partitions()
+        self.next(self.package_islands, foreach="partitions")
 
     @step
     def package_islands(self) -> None:
         from pathlib import Path
 
-        for partition in self.islands_ds.partitions():
-            path = (
-                self.output
-                / "islands"
-                / Path(*[f"{k}={v}" for (k, v) in partition.items()])
-            )
-            path.mkdir(mode=0o755, parents=True, exist_ok=True)
+        import pyarrow.feather as pf
 
-            self.islands_ds.read(**partition).sink_ipc(
-                path / "0.feather",
-                compression=None,
-                maintain_order=False,
-            )
+        from transformations.site.package import batch, drop_nulls
 
+        partition = typing.cast(dict[str, typing.Any], self.input)
+        path = (
+            self.output
+            / "islands"
+            / Path(*[f"{k}={v}" for (k, v) in partition.items()])
+        )
+        path.mkdir(mode=0o755, parents=True, exist_ok=True)
+
+        end = 0
+        for (start, e), part in batch(drop_nulls(self.islands_ds.read(**partition))):
+            pf.write_feather(
+                part.collect(streaming=True).to_arrow(),
+                path / f"{start}.feather",
+                compression="uncompressed",
+            )
+            end = e
+
+        print("[Island Partition] ", partition, f": {end} total rows")
+
+        self.next(self.collect_islands)
+
+    @step
+    def collect_islands(self, inputs: typing.Any) -> None:
+        self.merge_artifacts(inputs, include=["ephemeral"])
         self.next(self.join_flowtypes)
+
+    @step
+    def fanout_games(self) -> None:
+        self.partitions = self.games_ds.partitions()
+        self.next(self.package_games, foreach="partitions")
 
     @step
     def package_games(self) -> None:
         from pathlib import Path
 
-        for partition in self.games_ds.partitions():
-            path = (
-                self.output
-                / "games"
-                / Path(*[f"{k}={v}" for (k, v) in partition.items()])
-            )
-            path.mkdir(mode=0o755, parents=True, exist_ok=True)
+        import pyarrow.feather as pf
 
-            self.games_ds.read(**partition).sink_ipc(
-                path / "0.feather",
-                compression=None,
-                maintain_order=False,
-            )
+        from transformations.site.package import batch, drop_nulls
 
+        partition = typing.cast(dict[str, typing.Any], self.input)
+        path = (
+            self.output / "games" / Path(*[f"{k}={v}" for (k, v) in partition.items()])
+        )
+        path.mkdir(mode=0o755, parents=True, exist_ok=True)
+
+        end = 0
+        for (start, e), part in batch(drop_nulls(self.games_ds.read(**partition))):
+            pf.write_feather(
+                part.collect(streaming=True).to_arrow(),
+                path / f"{start}.feather",
+                compression="uncompressed",
+            )
+            end = e
+
+        print("[Games Partition] ", partition, f": {end} total rows")
+
+        self.next(self.collect_games)
+
+    @step
+    def collect_games(self, inputs: typing.Any) -> None:
+        self.merge_artifacts(inputs, include=["ephemeral"])
         self.next(self.join_flowtypes)
 
     @step
@@ -97,8 +138,7 @@ class SiteSugrFlow(FlowSpec):
 
     @step
     def end(self) -> None:
-        if not self.param_keep:
-            self.ephemeral.cleanup()
+        self.ephemeral.cleanup()
 
 
 if __name__ == "__main__":
