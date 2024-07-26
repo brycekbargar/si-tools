@@ -65,7 +65,7 @@ def explode_layouts(layouts: pl.LazyFrame, players: int) -> pl.LazyFrame:
             random.choices(  # noqa: S311
                 player_layouts.select("Players", "Layout").rows(),
                 weights=[r[0] for r in player_layouts.select("Weight").iter_rows()],
-                k=100,
+                k=20,
             ),
             ["Players", "Layout"],
             orient="row",
@@ -81,7 +81,7 @@ def explode_layouts(layouts: pl.LazyFrame, players: int) -> pl.LazyFrame:
         possible = _generate()
         actual = (
             possible.group_by("Layout")
-            .agg(pl.len().alias("Actual").truediv(pl.lit(100)))
+            .agg(pl.len().alias("Actual").truediv(pl.lit(20)))
             .to_dict(as_series=False)
         )
 
