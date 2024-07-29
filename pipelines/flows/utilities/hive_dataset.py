@@ -25,6 +25,12 @@ class HiveDataset:
         self._schema = kwargs
         self._keys = list(kwargs.keys())
 
+    @classmethod
+    def from_tsv(cls, base: str, tsv: Path) -> "HiveDataset":
+        dataset = cls(base, tsv.stem)
+        dataset.write(pl.scan_csv(tsv, separator="\t"))
+        return dataset
+
     def path(self) -> Path:
         """The root path of the dataset."""
         return self._dataset_path

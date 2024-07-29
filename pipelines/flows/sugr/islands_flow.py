@@ -11,7 +11,7 @@ from metaflow import (
 
 __OUTPUT_ARTIFACTS__ = ("ephemeral", "islands_ds")
 
-__DATASETS__ = ("boards_ds", "layouts_ds")
+__DATASETS__ = ("input_layouts_ds", "boards_ds", "layouts_ds")
 
 
 @conda_base(python=">=3.12,<3.13", packages={"polars": "==1.2.1"})
@@ -27,8 +27,6 @@ class SugrIslandsFlow(FlowSpec):
         import polars as pl
         from utilities.hive_dataset import HiveDataset
         from utilities.working_dir import WorkingDirectory
-
-        self.layouts_tsv = Path(typing.cast(str, self.param_input)) / "layouts.tsv"
 
         temp = WorkingDirectory.for_metaflow_run(
             "sugr-islands",
@@ -46,6 +44,11 @@ class SugrIslandsFlow(FlowSpec):
             self.ephemeral.push_segment(
                 "polars",
             ),
+        )
+
+        self.input_layouts_ds = HiveDataset.from_tsv(
+            self.ephemeral,
+            Path(typing.cast(str, self.param_input)) / "layouts.tsv",
         )
 
         self.next(self.branch_islandtypes)
@@ -113,7 +116,7 @@ class SugrIslandsFlow(FlowSpec):
 
         from transformations.sugr.islands import explode_layouts
 
-        layouts = pl.scan_csv(self.layouts_tsv, separator="\t")
+        layouts = self.input_layouts_ds.read()
         self.layouts_ds.write(
             pl.concat(
                 [explode_layouts(layouts, pc) for pc in range(1, 7)],
@@ -152,7 +155,7 @@ class SugrIslandsFlow(FlowSpec):
 
     @step
     def join_islandtypes(self, inputs: typing.Any) -> None:
-        self.merge_artifacts(inputs, include=list(__OUTPUT_ARTIFACTS__))
+        self.merge_artifacts(inputs, include=[*__OUTPUT_ARTIFACTS__, *__DATASETS__])
         self.next(self.end)
 
     @step

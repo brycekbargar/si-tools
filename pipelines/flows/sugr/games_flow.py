@@ -11,6 +11,10 @@ from metaflow import (
 __OUTPUT_ARTIFACTS__ = ("ephemeral", "games_ds")
 
 __DATASETS__ = (
+    "input_expansions_ds",
+    "input_adversaries_ds",
+    "input_escalations_ds",
+    "input_spirits_ds",
     "adversaries_ds",
     "spirits_ds",
     "matchups_ds",
@@ -35,10 +39,6 @@ class SugrGamesFlow(FlowSpec):
         from utilities.working_dir import WorkingDirectory
 
         input_dir = Path(typing.cast(str, self.param_input))
-        self.expansions_tsv = input_dir / "expansions.tsv"
-        self.spirits_tsv = input_dir / "spirits.tsv"
-        self.adversaries_tsv = input_dir / "adversaries.tsv"
-        self.escalations_tsv = input_dir / "escalations.tsv"
 
         temp = WorkingDirectory.for_metaflow_run(
             "sugr-games",
@@ -58,6 +58,22 @@ class SugrGamesFlow(FlowSpec):
             self.ephemeral.push_segment(
                 "polars",
             ),
+        )
+        self.input_expansions_ds = HiveDataset.from_tsv(
+            self.ephemeral,
+            input_dir / "expansions.tsv",
+        )
+        self.input_adversaries_ds = HiveDataset.from_tsv(
+            self.ephemeral,
+            input_dir / "adversaries.tsv",
+        )
+        self.input_escalations_ds = HiveDataset.from_tsv(
+            self.ephemeral,
+            input_dir / "escalations.tsv",
+        )
+        self.input_spirits_ds = HiveDataset.from_tsv(
+            self.ephemeral,
+            input_dir / "spirits.tsv",
         )
 
         self.next(self.fanout_expansions)
@@ -99,8 +115,6 @@ class SugrGamesFlow(FlowSpec):
 
     @step
     def filter_by_expansion(self) -> None:
-        import polars as pl
-
         from transformations.sugr.adversaries import adversaries_by_expansions
         from transformations.sugr.spirits import spirits_by_expansions
 
@@ -115,15 +129,15 @@ class SugrGamesFlow(FlowSpec):
 
         (adversaries, self.matchups) = adversaries_by_expansions(
             self.expansion,
-            pl.scan_csv(self.adversaries_tsv, separator="\t"),
-            pl.scan_csv(self.escalations_tsv, separator="\t"),
+            self.input_adversaries_ds.read(),
+            self.input_escalations_ds.read(),
         )
         self.adversaries_ds.write(adversaries, Expansion=self.expansion)
 
         self.spirits_ds.write(
             spirits_by_expansions(
                 self.expansion,
-                pl.scan_csv(self.spirits_tsv, separator="\t"),
+                self.input_spirits_ds.read(),
             ),
             Expansion=self.expansion,
         )
@@ -256,7 +270,7 @@ class SugrGamesFlow(FlowSpec):
 
     @step
     def collect_buckets(self, inputs: typing.Any) -> None:
-        self.merge_artifacts(inputs, include=[*__OUTPUT_ARTIFACTS__])
+        self.merge_artifacts(inputs, include=[*__OUTPUT_ARTIFACTS__, *__DATASETS__])
         self.next(self.end)
 
     @step
