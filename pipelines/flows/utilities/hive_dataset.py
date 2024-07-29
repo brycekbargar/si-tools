@@ -22,9 +22,6 @@ class HiveDataset:
             **kwargs: Schema of the Hive key/values (not the whole dataset).
         """
         self._dataset_path = Path(base) / dataset
-        if len(kwargs) == 0:
-            msg = "No partition keys provided"
-            raise KeyMismatchError(msg)
         self._schema = kwargs
         self._keys = list(kwargs.keys())
 
@@ -67,7 +64,7 @@ class HiveDataset:
                     f,
                     low_memory=low_memory,
                     hive_schema=self._schema,
-                    hive_partitioning=True,
+                    hive_partitioning=len(self._schema) > 0,
                 )
                 for f in self._dataset_path.glob(
                     str(

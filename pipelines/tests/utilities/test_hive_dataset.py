@@ -7,10 +7,23 @@ from uuid import uuid4
 
 import polars as pl
 import pytest
+from polars.testing import assert_frame_equal
 from pytest_cases import parametrize_with_cases
 
 from flows.utilities.hive_dataset import HiveDataset as uut
 from flows.utilities.hive_dataset import KeyMismatchError
+
+
+def test_keyless_dataset() -> None:
+    with tempfile.TemporaryDirectory() as tmpdir:
+        name = str(uuid4())
+        dataset = uut(tmpdir, name)
+
+        dataset.write(WriteCases.frame.lazy())
+        assert_frame_equal(
+            WriteCases.frame,
+            dataset.read().collect(),
+        )
 
 
 class WriteCases:
