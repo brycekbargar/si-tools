@@ -11,7 +11,7 @@ def generate_board_combinations(
 ) -> pl.LazyFrame:
     """Generates all valid combinations of boards for the number of players."""
     from functools import reduce
-    from itertools import permutations
+    from itertools import combinations
 
     boards = {
         0b00000001: "A",
@@ -32,7 +32,7 @@ def generate_board_combinations(
 
     combos = [
         (reduce(lambda c, b: c | b, list(p), 0b0), list(p))
-        for p in permutations(list(boards.keys()), players)
+        for p in combinations(list(boards.keys()), players)
     ]
     if players < 4:
         combos = [
