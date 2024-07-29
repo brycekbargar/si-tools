@@ -17,6 +17,14 @@ def adversaries_by_expansions(
 
     With more than four adversaries, France level 5 & 6 will be removed.
     """
+    all_adversaries = (
+        adversaries.clone()
+        .select("Name")
+        .unique()
+        .collect(streaming=True)
+        .to_series()
+        .to_list()
+    )
     adversaries = (
         adversaries.clone()
         .filter(pl.col("Expansion").or_(expansions).eq(expansions))
@@ -28,6 +36,7 @@ def adversaries_by_expansions(
                 pl.col("Level").cast(pl.Int8),
             ],
         )
+        .cast({"Name": pl.Enum([*all_adversaries, "Escalation"])})
         .rename({"Name": "Adversary"})
     )
 
@@ -44,6 +53,7 @@ def adversaries_by_expansions(
                     .drop("Expansion")
                     .with_columns(
                         [
+                            pl.lit("Escalation").alias("Name"),
                             pl.lit(1).cast(pl.Int8).alias("Difficulty"),
                             pl.lit(0).cast(pl.Int8).alias("Complexity"),
                             pl.lit("Tier").alias("Matchup"),
@@ -72,4 +82,7 @@ def adversaries_by_expansions(
         .rows()
     ]
 
-    return (adversaries, matchups)
+    return (
+        adversaries.cast({"Matchup": pl.Categorical}),
+        matchups,
+    )

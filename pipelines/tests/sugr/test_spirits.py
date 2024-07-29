@@ -19,7 +19,7 @@ def test_spirits_by_expansion() -> None:
     results = uut(1 | 8, spirits).collect(streaming=True).to_dict(as_series=False)
 
     # filters by expansion
-    assert "S4" not in results["Name"]
+    assert "S4" not in results["Spirit"]
 
     # converts complexity to something usable
     for c in results["Complexity"]:
@@ -33,7 +33,7 @@ def test_calculate_matchups() -> None:
     matchup = "neiroatra"
     spirits = pl.LazyFrame(
         {
-            "Name": ["S1", "S1", "S2", "S2", "S2", "S4", "S4"],
+            "Spirit": ["S1", "S1", "S2", "S2", "S2", "S4", "S4"],
             "Complexity": [1, 2, 2, 1, 3, 0, 0],
             matchup: ["A", "A", "X", "D", "X", "U", "U"],
         },

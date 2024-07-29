@@ -5,10 +5,19 @@ import polars as pl
 
 def spirits_by_expansions(expansions: int, spirits: pl.LazyFrame) -> pl.LazyFrame:
     """Filter, and clean Spirit data."""
+    all_spirits = (
+        spirits.clone()
+        .select("Name")
+        .unique()
+        .collect(streaming=True)
+        .to_series()
+        .to_list()
+    )
     spirits = (
         spirits.clone()
         .filter(pl.col("Expansions").or_(expansions).eq(expansions))
         .drop("Expansions", "Aspect")
+        .cast({"Name": pl.Enum(all_spirits)})
     )
 
     return (
@@ -20,14 +29,14 @@ def spirits_by_expansions(expansions: int, spirits: pl.LazyFrame) -> pl.LazyFram
                 },
                 schema={
                     "Complexity": pl.String,
-                    "Value": pl.Int8,
+                    "Value": pl.UInt8,
                 },
             ),
             on="Complexity",
             how="left",
         )
-        .with_columns(pl.col("Value").alias("Complexity"))
-        .drop("Value")
+        .drop("Complexity")
+        .rename({"Name": "Spirit", "Value": "Complexity"})
     )
 
 
@@ -61,10 +70,9 @@ def calculate_matchups(matchup: str, spirits: pl.LazyFrame) -> pl.LazyFrame:
     )
 
     return (
-        spirit_matchups.group_by(["Name", "Difficulty"])
+        spirit_matchups.group_by(["Spirit", "Difficulty"])
         .agg(pl.min("Complexity"))
-        .filter(pl.col("Difficulty").eq(pl.min("Difficulty").over("Name")))
-        .rename({"Name": "Spirit"})
+        .filter(pl.col("Difficulty").eq(pl.min("Difficulty").over("Spirit")))
     )
 
 

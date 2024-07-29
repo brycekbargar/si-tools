@@ -86,14 +86,14 @@ class SugrGamesFlow(FlowSpec):
             self.ephemeral.path,
             "matchups",
             Expansion=pl.UInt8,  # type: ignore [argumentType]
-            Matchup=pl.String,  # type: ignore [argumentType]
+            Matchup=pl.Categorial,  # type: ignore [argumentType]
         )
         self.combinations_ds = HiveDataset(
             self.ephemeral.path,
             "combinations",
             Expansion=pl.UInt8,  # type: ignore [argumentType]
             Players=pl.UInt8,  # type: ignore [argumentType]
-            Matchup=pl.String,  # type: ignore [argumentType]
+            Matchup=pl.Categorical,  # type: ignore [argumentType]
         )
         self.next(self.filter_by_expansion, foreach="expansions")
 
