@@ -8,20 +8,7 @@ def spirits_by_expansions(expansions: int, spirits: pl.LazyFrame) -> pl.LazyFram
     spirits = (
         spirits.clone()
         .filter(pl.col("Expansions").or_(expansions).eq(expansions))
-        .drop("Expansions")
-    )
-
-    spirits = (
-        spirits.join(spirits.group_by("Name").len(), on="Name", how="left")
-        .with_columns(
-            pl.when(pl.col("Aspect").is_not_null())
-            .then(pl.col("Aspect"))
-            .when(pl.col("len").gt(1))
-            .then(pl.lit("Base"))
-            .otherwise(None)
-            .alias("Aspect"),
-        )
-        .drop("len")
+        .drop("Expansions", "Aspect")
     )
 
     return (
@@ -71,44 +58,14 @@ def calculate_matchups(matchup: str, spirits: pl.LazyFrame) -> pl.LazyFrame:
             on=matchup,
             how="left",
         )
-        .with_columns(pl.col("Aspect").count().over("Name").name.suffix(" Count"))
     )
 
-    spirit_matchups = (
+    return (
         spirit_matchups.group_by(["Name", "Difficulty"])
-        .agg(
-            [
-                pl.col("Aspect"),
-                pl.max("Aspect Count"),
-                pl.max("Complexity"),
-            ],
-        )
+        .agg(pl.min("Complexity"))
         .filter(pl.col("Difficulty").eq(pl.min("Difficulty").over("Name")))
-        .with_columns(
-            pl.when(pl.col("Aspect Count").eq(0))
-            .then(pl.col("Name"))
-            .otherwise(
-                pl.concat_str(
-                    [
-                        pl.col("Name"),
-                        pl.lit(" ("),
-                        pl.col("Aspect").list.join(" or "),
-                        pl.lit(" Recommended)"),
-                    ],
-                ),
-            )
-            .alias("Spirit"),
-        )
+        .rename({"Name": "Spirit"})
     )
-
-    spirit_matchups = spirit_matchups.select(
-        pl.col("Difficulty"),
-        pl.col("Complexity"),
-        pl.col("Spirit"),
-    )
-
-    # list/string munging isn't supported by sink_parquet as of 1.1
-    return spirit_matchups.collect(streaming=True).lazy()
 
 
 def generate_combinations(

@@ -20,17 +20,6 @@ def test_spirits_by_expansion() -> None:
 
     # filters by expansion
     assert "S4" not in results["Name"]
-    # only makes base aspect for spirit with multiple aspects
-    assert results["Aspect"][results["Name"].index("S1")] is None
-    assert results["Aspect"][results["Name"].index("S2")] is None
-    # makes base aspect when appicable
-    assert sorted(
-        [
-            a
-            for a in results["Aspect"]
-            if results["Name"][results["Aspect"].index(a)] == "S3"
-        ],
-    ) == sorted(["Base", "3A1"])
 
     # converts complexity to something usable
     for c in results["Complexity"]:
@@ -38,68 +27,34 @@ def test_spirits_by_expansion() -> None:
         assert c > 0
 
 
-"""def test_calculate_matchups() -> None:
+def test_calculate_matchups() -> None:
     from transformations.sugr.spirits import calculate_matchups as uut
 
     matchup = "neiroatra"
     spirits = pl.LazyFrame(
         {
-            "Name": ["S1", "S1", "S2", "S2", "S2", "S3", "S4", "S4", "S5", "S5"],
-            "Aspect": [
-                "SA1",
-                "S1A2",
-                "S2A1",
-                "S2A2",
-                "S2A3",
-                None,
-                "S4A1",
-                "S4A2",
-                "S5A1",
-                "S5A2",
-            ],
-            "Complexity": [1, 2, 1, 2, 3, 0, 0, 0, 0, 0],
-            matchup: [
-                "Mid+",
-                "Mid+",
-                "Counters",
-                "Bottom",
-                "Counters",
-                "Mid-",
-                "Unplayable",
-                "Bottom",
-                "Unplayable",
-                "Unplayable",
-            ],
+            "Name": ["S1", "S1", "S2", "S2", "S2", "S4", "S4"],
+            "Complexity": [1, 2, 2, 1, 3, 0, 0],
+            matchup: ["A", "A", "X", "D", "X", "U", "U"],
         },
     )
 
     results = uut(matchup, spirits).collect(streaming=True).to_dict(as_series=False)
 
     for i in range(len(results["Spirit"])):
-        #assert results["Matchup"][i] == matchup
-
         match typing.cast(str, results["Spirit"][i]):
-            case s if s.startswith("S1"):
-                # Any is for when all the aspects have the same matchup
-                assert s == "S1 (Any)"
+            case s if s == "S1":
                 # Take the lowest complexity
+                assert results["Complexity"][i] == 1
+            case s if s == "S2":
+                # Take the lowest complexity among the best matchups
                 assert results["Complexity"][i] == 2
-            case s if s.startswith("S2"):
-                # Aspects with the same matchup are combined
-                assert s in ("S2 (S2A1, S2A3)", "S2 (S2A3, S2A1)")
-                assert results["Complexity"][i] == 3
-            case s if s.startswith("S3"):
-                # Only with multiple aspects does a spirit get parens
-                assert s == "S3"
-            case s if s.startswith("S4"):
+                assert results["Difficulty"][i] == -4
+            case s if s == "S3":
                 # Unplayable spirts are excluded
-                assert s == "S4 (S4A2)"
-            case s if s.startswith("S5"):
-                # No really, they're excluded
-                pytest.fail("S5 was only unplayable")
+                pytest.fail("S3 was only unplayable")
             case _ as s:
                 pytest.fail(f"{s} isn't an expected spirit")
-"""
 
 
 def test_generate_combinations() -> None:
