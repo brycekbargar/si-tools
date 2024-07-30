@@ -1,6 +1,5 @@
 """Provides operations on LazyFrames finalizing Spirit Island games."""
 
-import gc
 import typing
 
 import polars as pl
@@ -10,8 +9,8 @@ def create_games(
     adversaries: pl.LazyFrame,
     combos: pl.LazyFrame,
 ) -> pl.LazyFrame:
-    """Creates games from adversaries/spirits based on matchups, filtering outliers."""
-    all_games = (
+    """Creates games from adversaries/spirits based on matchups."""
+    return (
         adversaries.clone()
         .join(
             combos.clone().drop("Difficulty", "Complexity", "Hash"),
@@ -19,31 +18,9 @@ def create_games(
         )
         .with_columns(
             pl.col("NDifficulty").add(pl.col("Difficulty")),
-            pl.col("NComplexity").add(pl.col("Difficulty")).truediv(pl.lit(2)),
+            pl.col("NComplexity").add(pl.col("Difficulty")),
         )
         .drop("Difficulty", "Complexity", "Matchup")
-    )
-
-    distribution = all_games.clone().select(
-        pl.col("NDifficulty").mean().alias("DStd"),
-        pl.col("NDifficulty").std().alias("DMean"),
-        pl.col("NComplexity").mean().alias("CStd"),
-        pl.col("NComplexity").std().alias("CMean"),
-    )
-    (dmean, dstddev, cmean, cstddev) = distribution.collect(streaming=True).row(0)
-    min_difficulty = dmean - 2 * dstddev
-    max_difficulty = dmean + 2 * dstddev
-    min_complexity = cmean - 2 * cstddev
-    max_complexity = cmean + 2 * cstddev
-    del distribution
-    gc.collect()
-
-    # sink_parquet doesn't support streaming filtering by std/mean as of 1.1
-    return all_games.filter(
-        pl.col("NDifficulty").ge(pl.lit(min_difficulty))
-        & pl.col("NDifficulty").le(pl.lit(max_difficulty))
-        & pl.col("NComplexity").ge(pl.lit(min_complexity))
-        & pl.col("NComplexity").le(pl.lit(max_complexity)),
     )
 
 
