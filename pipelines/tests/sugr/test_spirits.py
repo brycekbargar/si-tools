@@ -35,12 +35,13 @@ def test_calculate_matchups() -> None:
         {
             "Spirit": ["S1", "S1", "S2", "S2", "S2", "S4", "S4"],
             "Complexity": [1, 2, 2, 1, 3, 0, 0],
-            matchup: ["A", "A", "X", "D", "X", "U", "U"],
+            matchup: ["A", "A", "S", "D", "S", "F", "F"],
         },
     )
 
     results = uut(matchup, spirits).collect(streaming=True).to_dict(as_series=False)
 
+    assert len(results) == 3
     for i in range(len(results["Spirit"])):
         match typing.cast(str, results["Spirit"][i]):
             case s if s == "S1":
@@ -49,10 +50,10 @@ def test_calculate_matchups() -> None:
             case s if s == "S2":
                 # Take the lowest complexity among the best matchups
                 assert results["Complexity"][i] == 2
-                assert results["Difficulty"][i] == -4
+                assert results["Difficulty"][i] == -2
             case s if s == "S3":
-                # Unplayable spirts are excluded
-                pytest.fail("S3 was only unplayable")
+                # F-tier matchups are excluded
+                pytest.fail("S3 was only f-tier")
             case _ as s:
                 pytest.fail(f"{s} isn't an expected spirit")
 

@@ -42,35 +42,33 @@ def spirits_by_expansions(expansions: int, spirits: pl.LazyFrame) -> pl.LazyFram
 
 def calculate_matchups(matchup: str, spirits: pl.LazyFrame) -> pl.LazyFrame:
     """Calculate the difficulty modifiers and best/worst spirits for the matchup."""
-    spirit_matchups = (
-        spirits.clone()
-        .filter(pl.Expr.not_(pl.col(matchup).eq(pl.lit("U"))))
-        .join(
-            pl.LazyFrame(
-                {
-                    matchup: [
-                        "X",
-                        "S",
-                        "A",
-                        "B",
-                        "C",
-                        "D",
-                        "F",
-                    ],
-                    "Difficulty": [-4, -2, -1, 0, 1, 2, 4],
-                },
-                schema={
-                    matchup: pl.Utf8,
-                    "Difficulty": pl.Int8,
-                },
-            ),
-            on=matchup,
-            how="left",
+    if matchup == "Tier":
+        matchup_values = pl.LazyFrame(
+            {
+                "Tier": ["X", "S", "A", "B", "C", "D", "F"],
+                "Difficulty": [-4, -2, -1, 0, 1, 2, 4],
+            },
+            schema={
+                "Tier": pl.Utf8,
+                "Difficulty": pl.Int8,
+            },
         )
-    )
+    else:
+        matchup_values = pl.LazyFrame(
+            {
+                matchup: ["S", "A", "B", "C", "D"],
+                "Difficulty": [-2, -1, 0, 1, 3],
+            },
+            schema={
+                matchup: pl.Utf8,
+                "Difficulty": pl.Int8,
+            },
+        )
 
     return (
-        spirit_matchups.group_by(["Spirit", "Difficulty"])
+        spirits.clone()
+        .join(matchup_values, on=matchup)
+        .group_by(["Spirit", "Difficulty"])
         .agg(pl.min("Complexity"))
         .filter(pl.col("Difficulty").eq(pl.min("Difficulty").over("Spirit")))
     )
