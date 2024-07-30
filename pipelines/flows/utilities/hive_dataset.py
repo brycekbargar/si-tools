@@ -26,8 +26,8 @@ class HiveDataset:
         self._keys = list(kwargs.keys())
 
     @classmethod
-    def from_tsv(cls, base: str, tsv: Path) -> "HiveDataset":
-        dataset = cls(base, tsv.stem)
+    def from_tsv(cls, base: str | Path, tsv: Path) -> "HiveDataset":
+        dataset = cls(base, Path(tsv).stem)
         dataset.write(pl.scan_csv(tsv, separator="\t"))
         return dataset
 

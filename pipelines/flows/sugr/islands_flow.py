@@ -47,7 +47,7 @@ class SugrIslandsFlow(FlowSpec):
         )
 
         self.input_layouts_ds = HiveDataset.from_tsv(
-            self.ephemeral,
+            self.ephemeral.path,
             Path(typing.cast(str, self.param_input)) / "layouts.tsv",
         )
 

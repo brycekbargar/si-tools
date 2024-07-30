@@ -60,19 +60,19 @@ class SugrGamesFlow(FlowSpec):
             ),
         )
         self.input_expansions_ds = HiveDataset.from_tsv(
-            self.ephemeral,
+            self.ephemeral.path,
             input_dir / "expansions.tsv",
         )
         self.input_adversaries_ds = HiveDataset.from_tsv(
-            self.ephemeral,
+            self.ephemeral.path,
             input_dir / "adversaries.tsv",
         )
         self.input_escalations_ds = HiveDataset.from_tsv(
-            self.ephemeral,
+            self.ephemeral.path,
             input_dir / "escalations.tsv",
         )
         self.input_spirits_ds = HiveDataset.from_tsv(
-            self.ephemeral,
+            self.ephemeral.path,
             input_dir / "spirits.tsv",
         )
 
