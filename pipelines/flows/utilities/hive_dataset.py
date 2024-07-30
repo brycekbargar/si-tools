@@ -80,6 +80,7 @@ class HiveDataset:
                 )
             ),
             how="diagonal_relaxed",
+            rechunk=True,
         ).drop(kwargs.keys())
 
     def write(

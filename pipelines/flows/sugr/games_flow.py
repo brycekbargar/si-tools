@@ -50,7 +50,7 @@ class SugrGamesFlow(FlowSpec):
             Expansion=pl.UInt8,  # type: ignore [argumentType]
             Players=pl.UInt8,  # type: ignore [argumentType]
             Difficulty=pl.UInt8,  # type: ignore [argumentType]
-            Complexity=pl.UInt8,  # type: ignore [argumentType]
+            Complexity=pl.String,  # type: ignore [argumentType]
         )
 
         self.ephemeral = temp.push_segment("ephemeral")
@@ -59,20 +59,22 @@ class SugrGamesFlow(FlowSpec):
                 "polars",
             ),
         )
+
+        self.source = temp.push_segment("source")
         self.input_expansions_ds = HiveDataset.from_tsv(
-            self.ephemeral.path,
+            self.source.path,
             input_dir / "expansions.tsv",
         )
         self.input_adversaries_ds = HiveDataset.from_tsv(
-            self.ephemeral.path,
+            self.source.path,
             input_dir / "adversaries.tsv",
         )
         self.input_escalations_ds = HiveDataset.from_tsv(
-            self.ephemeral.path,
+            self.source.path,
             input_dir / "escalations.tsv",
         )
         self.input_spirits_ds = HiveDataset.from_tsv(
-            self.ephemeral.path,
+            self.source.path,
             input_dir / "spirits.tsv",
         )
 
@@ -82,11 +84,6 @@ class SugrGamesFlow(FlowSpec):
     def fanout_expansions(self) -> None:
         import polars as pl
         from utilities.hive_dataset import HiveDataset
-
-        exp = pl.scan_csv(self.expansions_tsv, separator="\t")
-        if self.param_subset:
-            exp = exp.filter(pl.col("Value").is_in([1, 2, 13, 14, 31, 49]))
-        self.expansions = exp.select("Value", "Players").collect(streaming=True).rows()
 
         self.adversaries_ds = HiveDataset(
             self.ephemeral.path,
@@ -111,6 +108,12 @@ class SugrGamesFlow(FlowSpec):
             Players=pl.UInt8,  # type: ignore [argumentType]
             Matchup=pl.Categorical,  # type: ignore [argumentType]
         )
+
+        exp = self.input_expansions_ds.read()
+        if self.param_subset:
+            exp = exp.filter(pl.col("Value").is_in([1, 2, 13, 19, 31, 49, 63]))
+        self.expansions = exp.select("Value", "Players").collect(streaming=True).rows()
+
         self.next(self.filter_by_expansion, foreach="expansions")
 
     @step
@@ -192,6 +195,7 @@ class SugrGamesFlow(FlowSpec):
                         Matchup=self.matchup,
                     ),
                     self.combinations_ds.read(
+                        low_memory=True,
                         Expansion=self.expansion,
                         Matchup=self.matchup,
                         Players=pc,
@@ -222,48 +226,41 @@ class SugrGamesFlow(FlowSpec):
 
     @step
     def fanout_buckets(self) -> None:
-        from transformations.sugr.games import create_games, define_buckets
-
-        self.buckets = list(
-            define_buckets(
-                create_games(
-                    self.adversaries_ds.read(),
-                    self.combinations_ds.read(low_memory=True),
-                ),
-            ),
+        from transformations.sugr.games import (
+            create_games,
+            horizons_bucket,
+            je_buckets,
+            preje_buckets,
         )
 
-        print(self.buckets)
+        games = create_games(
+            self.adversaries_ds.read(),
+            self.combinations_ds.read(low_memory=True),
+        )
+
+        self.buckets = [
+            *horizons_bucket(),
+            *preje_buckets(games),
+            *je_buckets(games),
+        ]
 
         self.next(self.bucket_games, foreach="buckets")
 
     @step
     def bucket_games(self) -> None:
-        from transformations.sugr.games import create_games, filter_by_bucket
+        from transformations.sugr.games import Bucket, create_games, filter_by_bucket
 
-        (
-            difficulty,
-            difficulty_min,
-            difficulty_max,
-            complexity,
-            complexity_min,
-            complexity_max,
-        ) = typing.cast(
-            tuple[int, float, float, int, float, float],
-            self.input,
-        )
-
+        bucket = typing.cast(Bucket, self.input)
         self.games_ds.write(
             filter_by_bucket(
-                (difficulty_min, difficulty_max),
-                (complexity_min, complexity_max),
+                bucket,
                 create_games(
                     self.adversaries_ds.read(),
                     self.combinations_ds.read(low_memory=True),
                 ),
             ),
-            Difficulty=difficulty,
-            Complexity=complexity,
+            Difficulty=bucket.difficulty,
+            Complexity=bucket.complexity,
         )
 
         self.next(self.collect_buckets)

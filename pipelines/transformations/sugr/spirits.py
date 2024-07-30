@@ -25,7 +25,7 @@ def spirits_by_expansions(expansions: int, spirits: pl.LazyFrame) -> pl.LazyFram
             pl.LazyFrame(
                 {
                     "Complexity": ["Low", "Moderate", "High", "Very High"],
-                    "Value": [0, 1, 2, 4],
+                    "Value": [0, 3, 6, 9],
                 },
                 schema={
                     "Complexity": pl.String,
