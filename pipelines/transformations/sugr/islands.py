@@ -85,10 +85,10 @@ def explode_layouts(layouts: pl.LazyFrame, players: int) -> pl.LazyFrame:
             .to_dict(as_series=False)
         )
 
-        within_bounds = True
+        within_bounds = len(expected["Layout"]) == len(actual["Layout"])
         for i in range(len(expected["Layout"])):
             if not within_bounds:
-                continue
+                break
 
             layout = expected["Layout"][i]
             expected_percent = expected["Expected"][i]
