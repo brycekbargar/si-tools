@@ -5,19 +5,10 @@ import polars as pl
 
 def spirits_by_expansions(expansions: int, spirits: pl.LazyFrame) -> pl.LazyFrame:
     """Filter, and clean Spirit data."""
-    all_spirits = (
-        spirits.clone()
-        .select("Name")
-        .unique()
-        .collect(streaming=True)
-        .to_series()
-        .to_list()
-    )
     spirits = (
         spirits.clone()
         .filter(pl.col("Expansions").or_(expansions).eq_missing(expansions))
         .drop("Expansions", "Aspect")
-        .cast({"Name": pl.Enum(all_spirits)})
     )
 
     return (
@@ -78,6 +69,7 @@ def calculate_matchups(matchup: str, spirits: pl.LazyFrame) -> pl.LazyFrame:
             .group_by(["Spirit", "Difficulty"])
             .agg(pl.min("Complexity"), pl.all("Has D"))
             .filter(pl.col("Difficulty").eq(pl.min("Difficulty").over("Spirit")))
+            .with_columns(pl.col("Spirit").hash().alias("Hash"))
         )
         .collect(streaming=True)
         .lazy()
@@ -96,7 +88,6 @@ def generate_combinations(
                 [
                     pl.col("Difficulty").alias("NDifficulty"),
                     pl.col("Complexity").cast(pl.Float32).alias("NComplexity"),
-                    pl.col("Spirit").hash().alias("Hash"),
                 ],
             )
             .rename({"Spirit": "Spirit_0"})
@@ -115,11 +106,15 @@ def generate_combinations(
     players = len([c for c in previous_schema.names() if c.startswith("Spirit")]) + 1
     sp_col = f"Spirit_{(players-1)}"
     spirit_n = pl.col(sp_col)
-    unique_spirits = pl.Expr.not_(spirit_n.eq(pl.col("Spirit_0")))
+    unique_spirits = pl.Expr.not_(spirit_n.eq_missing(pl.col("Spirit_0")))
+    cast_enum: dict[str, pl.DataType] = {"Spirit_0": _all_spirits}
+    cast_string: dict[str, pl.DataType] = {"Spirit_0": pl.String}
     for i in range(players - 2, 0, -1):
         unique_spirits = unique_spirits.and_(
-            pl.Expr.not_(spirit_n.eq(pl.col(f"Spirit_{i}"))),
+            pl.Expr.not_(spirit_n.eq_missing(pl.col(f"Spirit_{i}"))),
         )
+        cast_enum[f"Spirit_{i+1}"] = _all_spirits
+        cast_string[f"Spirit_{i+1}"] = pl.String
 
     return (
         matchups.clone()
@@ -128,17 +123,62 @@ def generate_combinations(
             how="cross",
         )
         .rename({"Spirit": sp_col})
+        .cast(cast_enum)
         .filter(unique_spirits)
         .with_columns(
             pl.col("Difficulty").add(pl.col("Difficulty_right")),
             pl.col("Complexity").add(pl.col("Complexity_right")),
             pl.col("Has D").or_(pl.col("Has D_right")),
-            pl.col("Hash").add(pl.col(sp_col).hash()),
+            pl.col("Hash").add(pl.col("Hash_right")),
         )
         .with_columns(
             pl.col("Difficulty").truediv(players).cast(pl.Float32).alias("NDifficulty"),
             pl.col("Complexity").truediv(players).cast(pl.Float32).alias("NComplexity"),
         )
-        .drop("Difficulty_right", "Complexity_right", "Has D_right")
+        .drop("Difficulty_right", "Complexity_right", "Has D_right", "Hash_right")
+        .cast(cast_string)
         .unique("Hash")
     )
+
+
+_all_spirits = pl.Enum(
+    [
+        "Lightning's Swift Strike",
+        "River Surges in Sunlight",
+        "Vital Strength of the Earth",
+        "Shadows Flicker Like Flame",
+        "Thunderspeaker",
+        "A Spread of Rampant Green",
+        "Bringer of Dreams and Nightmares",
+        "Ocean's Hungry Grasp",
+        "Sharp Fangs Behind the Leaves",
+        "Keeper of the Forbidden Wilds",
+        "Devouring Teeth Lurk Underfoot",
+        "Eyes Watch from the Trees",
+        "Fathomless Mud of the Swamp",
+        "Rising Heat of Stone and Sand",
+        "Sun-Bright Whirlwind",
+        "Stone's Unyielding Defiance",
+        "Grinning Trickster Stirs Up Trouble",
+        "Many Minds Move as One",
+        "Volcano Looming High",
+        "Shifting Memory of Ages",
+        "Lure of the Deep Wilderness",
+        "Vengeance as a Burning Plague",
+        "Shroud of Silent Mist",
+        "Fractured Days Split the Sky",
+        "Starlight Seeks Its Form",
+        "Heart of the Wildfire",
+        "Serpent Slumbering Beneath the Island",
+        "Downpour Drenches the World",
+        "Finder of Paths Unseen",
+        "Ember-Eyed Behemoth",
+        "Hearth-Vigil",
+        "Towering Roots of the Jungle",
+        "Wandering Voice Keens Delirium",
+        "Relentless Gaze of the Sun",
+        "Wounded Waters Bleeding",
+        "Breath of Darkness Down Your Spine",
+        "Dances Up Earthquakes",
+    ],
+)

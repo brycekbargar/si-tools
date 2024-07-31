@@ -4,21 +4,6 @@ import typing
 
 import polars as pl
 
-all_matchups: pl.DataType = pl.Enum(
-    [
-        "Tier",
-        "France",
-        "Sweden",
-        "Scotland",
-        "Prussia",
-        "Livestock",
-        "England",
-        "Russia",
-        "Mines",
-    ],
-)
-"""A hardcoded list of matchups for categorical purposes."""
-
 
 def adversaries_by_expansions(
     expansions: int,
@@ -32,14 +17,6 @@ def adversaries_by_expansions(
 
     With more than four adversaries, France level 5 & 6 will be removed.
     """
-    all_adversaries = (
-        adversaries.clone()
-        .select("Name")
-        .unique()
-        .collect(streaming=True)
-        .to_series()
-        .to_list()
-    )
     adversaries = (
         adversaries.clone()
         .filter(pl.col("Expansion").or_(expansions).eq_missing(expansions))
@@ -53,8 +30,8 @@ def adversaries_by_expansions(
         )
         .cast(
             {
-                "Name": pl.Enum([*all_adversaries, "Escalation"]),
-                "Matchup": all_matchups,
+                "Name": pl.String,
+                "Matchup": pl.String,
             },
         )
     )
@@ -72,14 +49,10 @@ def adversaries_by_expansions(
                     .drop("Expansion")
                     .with_columns(
                         [
-                            (
-                                pl.lit("Escalation")
-                                .cast(pl.Enum([*all_adversaries, "Escalation"]))
-                                .alias("Name")
-                            ),
+                            pl.lit("Escalation").alias("Name"),
                             pl.lit(1).cast(pl.Int8).alias("Difficulty"),
                             pl.lit(0).cast(pl.Int8).alias("Complexity"),
-                            pl.lit("Tier").cast(all_matchups).alias("Matchup"),
+                            pl.lit("Tier").alias("Matchup"),
                         ],
                     )
                 ),
@@ -106,6 +79,6 @@ def adversaries_by_expansions(
     ]
 
     return (
-        adversaries.rename({"Name": "Adversary"}).cast({"Matchup": all_matchups}),
+        adversaries.rename({"Name": "Adversary"}),
         matchups,
     )

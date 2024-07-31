@@ -13,8 +13,11 @@ def create_games(
     """Creates games from adversaries/spirits based on matchups."""
     return (
         adversaries.clone()
+        .cast({"Matchup": _all_matchups})
         .join(
-            combos.clone().drop("Difficulty", "Complexity", "Hash"),
+            combos.clone()
+            .cast({"Matchup": _all_matchups})
+            .drop("Difficulty", "Complexity", "Hash"),
             on=["Expansion", "Matchup"],
         )
         .with_columns(
@@ -51,7 +54,7 @@ def _buckets(
     complexity_count: int,
 ) -> typing.Iterator[Bucket]:
     all_games = all_games.clone().filter(
-        pl.and_(
+        pl.Expr.and_(
             sp_filter,
             pl.col("Players").gt(pl.lit(1)),
             pl.col("Players").le(pl.lit(4)),
@@ -96,7 +99,7 @@ def _buckets(
         for c_max, c in complexity.sort("category").rows():
             yield Bucket(
                 name,
-                pl.and_(
+                pl.Expr.and_(
                     sp_filter,
                     pl.col("NDifficulty").gt(d_min),
                     pl.col("NDifficulty").le(d_max),
@@ -118,7 +121,7 @@ def preje_buckets(
         _buckets(
             "Pre Jagged Earth",
             all_games,
-            pl.and_(
+            pl.Expr.and_(
                 pl.col("Expansion").lt(49),
                 pl.col("Expansion").ne(2),
             ),
@@ -139,7 +142,7 @@ def je_buckets(
             pl.Expr.and_(
                 pl.col("Expansion").ge(49),
                 # Too many good games for D matchups.
-                pl.not_(pl.col("Has D")),
+                pl.Expr.not_(pl.col("Has D")),
             ),
             difficulty_count=5,
             complexity_count=3,
@@ -157,3 +160,18 @@ def filter_by_bucket(
         "NComplexity",
         "Has D",
     )
+
+
+_all_matchups: pl.DataType = pl.Enum(
+    [
+        "Tier",
+        "France",
+        "Sweden",
+        "Scotland",
+        "Prussia",
+        "Livestock",
+        "England",
+        "Russia",
+        "Mines",
+    ],
+)

@@ -67,7 +67,8 @@ def test_generate_combinations() -> None:
 
     spirits = pl.LazyFrame(
         {
-            "Spirit": ["S1", "S2", "S3"],
+            "Spirit": ["Thunderspeaker", "Hearth-Vigil", "Volcano Looming High"],
+            "Hash": [1, 2, 3],
             "Difficulty": [2, 4, 3],
             "Complexity": [4, 8, 3],
             "Has D": [False, True, False],
@@ -88,19 +89,19 @@ def test_generate_combinations() -> None:
     s2_s3_uniq = True
     for i in range(len(m2["Spirit_0"])):
         match typing.cast(list[str], sorted((m2["Spirit_0"][i], m2["Spirit_1"][i]))):
-            case ["S1", "S2"]:
+            case ["Hearth-Vigil", "Thunderspeaker"]:
                 assert s1_s2_uniq
                 s1_s2_uniq = False
                 assert m2["NDifficulty"][i] == 3
                 assert m2["NComplexity"][i] == 6
                 assert m2["Has D"][i]
-            case ["S1", "S3"]:
+            case ["Thunderspeaker", "Volcano Looming High"]:
                 assert s1_s3_uniq
                 s1_s3_uniq = False
                 assert m2["NDifficulty"][i] == 2.5
                 assert m2["NComplexity"][i] == 3.5
                 assert not m2["Has D"][i]
-            case ["S2", "S3"]:
+            case ["Hearth-Vigil", "Volcano Looming High"]:
                 assert s2_s3_uniq
                 s2_s3_uniq = False
                 assert m2["NDifficulty"][i] == 3.5
@@ -114,7 +115,7 @@ def test_generate_combinations() -> None:
     assert len(m3["Spirit_0"]) == 1
 
     assert sorted((m3["Spirit_0"][0], m3["Spirit_1"][0], m3["Spirit_2"][0])) == sorted(
-        ["S1", "S2", "S3"],
+        ["Hearth-Vigil", "Thunderspeaker", "Volcano Looming High"],
     )
     assert m3["NDifficulty"][0] == 3
     assert m3["NComplexity"][0] == 5
