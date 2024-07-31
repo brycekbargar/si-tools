@@ -239,7 +239,7 @@ class SugrGamesFlow(FlowSpec):
         )
 
         self.buckets = [
-            *horizons_bucket(),
+            horizons_bucket(),
             *preje_buckets(games),
             *je_buckets(games),
         ]
@@ -251,6 +251,7 @@ class SugrGamesFlow(FlowSpec):
         from transformations.sugr.games import Bucket, create_games, filter_by_bucket
 
         bucket = typing.cast(Bucket, self.input)
+        print(str(bucket))
         self.games_ds.write(
             filter_by_bucket(
                 bucket,
