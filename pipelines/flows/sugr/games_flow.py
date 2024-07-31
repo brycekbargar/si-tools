@@ -22,7 +22,7 @@ __DATASETS__ = (
 )
 
 
-@conda_base(python=">=3.12,<3.13", packages={"polars": "==1.1.0"})
+@conda_base(python=">=3.12,<3.13", packages={"polars": "==1.2.1"})
 class SugrGamesFlow(FlowSpec):
     param_input = Parameter("input", required=True, type=str)
     param_keep = Parameter("keep", default=False)

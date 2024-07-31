@@ -28,9 +28,9 @@ def test_explode_layouts(data: tuple[pl.LazyFrame, pl.LazyFrame]) -> None:
         uut.explode_layouts(data[0], 3).collect(streaming=True).to_dict(as_series=False)
     )
 
-    assert 8 <= sum([lout == "3p3" for lout in layouts["Layout"]]) <= 12
-    assert 1 <= sum([lout == "3p1" for lout in layouts["Layout"]]) <= 5
-    assert 1 <= sum([lout == "3p2" for lout in layouts["Layout"]]) <= 5
+    assert 19 <= sum([lout == "3p3" for lout in layouts["Layout"]]) <= 31
+    assert 9 <= sum([lout == "3p1" for lout in layouts["Layout"]]) <= 16
+    assert 9 <= sum([lout == "3p2" for lout in layouts["Layout"]]) <= 16
 
 
 def test_generate_loose_islands(data: tuple[pl.LazyFrame, pl.LazyFrame]) -> None:

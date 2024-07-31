@@ -15,7 +15,7 @@ def spirits_by_expansions(expansions: int, spirits: pl.LazyFrame) -> pl.LazyFram
     )
     spirits = (
         spirits.clone()
-        .filter(pl.col("Expansions").or_(expansions).eq(expansions))
+        .filter(pl.col("Expansions").or_(expansions).eq_missing(expansions))
         .drop("Expansions", "Aspect")
         .cast({"Name": pl.Enum(all_spirits)})
     )
@@ -49,7 +49,7 @@ def calculate_matchups(matchup: str, spirits: pl.LazyFrame) -> pl.LazyFrame:
             {
                 "Tier": ["X", "S", "A", "B", "C", "D", "F"],
                 "Difficulty": [0.7, 0.8, 0.9, 0.0, 1.1, 1.2, 1.3],
-                "Has D": [False * 7],
+                "Has D": [False] * 7,
             },
             schema={
                 "Tier": pl.Utf8,
@@ -72,11 +72,15 @@ def calculate_matchups(matchup: str, spirits: pl.LazyFrame) -> pl.LazyFrame:
         )
 
     return (
-        spirits.clone()
-        .join(matchup_values, on=matchup)
-        .group_by(["Spirit", "Difficulty"])
-        .agg(pl.min("Complexity"), pl.all("Has D"))
-        .filter(pl.col("Difficulty").eq(pl.min("Difficulty").over("Spirit")))
+        (
+            spirits.clone()
+            .join(matchup_values, on=matchup)
+            .group_by(["Spirit", "Difficulty"])
+            .agg(pl.min("Complexity"), pl.all("Has D"))
+            .filter(pl.col("Difficulty").eq(pl.min("Difficulty").over("Spirit")))
+        )
+        .collect(streaming=True)
+        .lazy()
     )
 
 

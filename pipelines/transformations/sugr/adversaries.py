@@ -42,7 +42,7 @@ def adversaries_by_expansions(
     )
     adversaries = (
         adversaries.clone()
-        .filter(pl.col("Expansion").or_(expansions).eq(expansions))
+        .filter(pl.col("Expansion").or_(expansions).eq_missing(expansions))
         .drop("Expansion")
         .with_columns(
             [
@@ -51,27 +51,35 @@ def adversaries_by_expansions(
                 pl.col("Level").cast(pl.Int8),
             ],
         )
-        .cast({"Name": pl.Enum([*all_adversaries, "Escalation"])})
-        .rename({"Name": "Adversary"})
+        .cast(
+            {
+                "Name": pl.Enum([*all_adversaries, "Escalation"]),
+                "Matchup": all_matchups,
+            },
+        )
     )
 
-    adv_count = (
-        adversaries.clone().select(pl.col("Adversary").n_unique()).collect().item()
-    )
+    adv_count = adversaries.clone().unique("Name").collect().height
 
     if adv_count <= 3:
         adversaries = pl.concat(
             [
                 adversaries,
                 (
-                    escalations.filter(pl.col("Expansion").and_(expansions).eq(0))
+                    escalations.filter(
+                        pl.col("Expansion").and_(expansions).eq_missing(0),
+                    )
                     .drop("Expansion")
                     .with_columns(
                         [
-                            pl.lit("Escalation").alias("Name"),
+                            (
+                                pl.lit("Escalation")
+                                .cast(pl.Enum([*all_adversaries, "Escalation"]))
+                                .alias("Name")
+                            ),
                             pl.lit(1).cast(pl.Int8).alias("Difficulty"),
                             pl.lit(0).cast(pl.Int8).alias("Complexity"),
-                            pl.lit("Tier").alias("Matchup"),
+                            pl.lit("Tier").cast(all_matchups).alias("Matchup"),
                         ],
                     )
                 ),
@@ -82,7 +90,7 @@ def adversaries_by_expansions(
     if adv_count > 4:
         adversaries = adversaries.filter(
             (
-                pl.col("Adversary")
+                pl.col("Name")
                 .eq(pl.lit("The Kingdom of France (Plantation Colony)"))
                 .not_()
             ).or_(pl.col("Level").le(pl.lit(4))),
@@ -98,6 +106,6 @@ def adversaries_by_expansions(
     ]
 
     return (
-        adversaries.cast({"Matchup": all_matchups}),
+        adversaries.rename({"Name": "Adversary"}).cast({"Matchup": all_matchups}),
         matchups,
     )

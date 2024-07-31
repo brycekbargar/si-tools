@@ -118,4 +118,4 @@ def test_generate_combinations() -> None:
     )
     assert m3["NDifficulty"][0] == 3
     assert m3["NComplexity"][0] == 5
-    assert m2["Has D"][i]
+    assert m3["Has D"][0]
