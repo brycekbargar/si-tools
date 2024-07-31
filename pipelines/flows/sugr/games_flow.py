@@ -85,6 +85,8 @@ class SugrGamesFlow(FlowSpec):
         import polars as pl
         from utilities.hive_dataset import HiveDataset
 
+        from transformations.sugr.adversaries import all_matchups
+
         self.adversaries_ds = HiveDataset(
             self.ephemeral.path,
             "adversaries",
@@ -99,14 +101,14 @@ class SugrGamesFlow(FlowSpec):
             self.ephemeral.path,
             "matchups",
             Expansion=pl.UInt8,  # type: ignore [argumentType]
-            Matchup=pl.Categorial,  # type: ignore [argumentType]
+            Matchup=all_matchups,
         )
         self.combinations_ds = HiveDataset(
             self.ephemeral.path,
             "combinations",
             Expansion=pl.UInt8,  # type: ignore [argumentType]
             Players=pl.UInt8,  # type: ignore [argumentType]
-            Matchup=pl.Categorical,  # type: ignore [argumentType]
+            Matchup=all_matchups,
         )
 
         exp = self.input_expansions_ds.read()

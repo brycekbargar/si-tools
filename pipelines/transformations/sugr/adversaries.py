@@ -4,6 +4,21 @@ import typing
 
 import polars as pl
 
+all_matchups: pl.DataType = pl.Enum(
+    [
+        "Tier",
+        "France",
+        "Sweden",
+        "Scotland",
+        "Prussia",
+        "Livestock",
+        "England",
+        "Russia",
+        "Mines",
+    ],
+)
+"""A hardcoded list of matchups for categorical purposes."""
+
 
 def adversaries_by_expansions(
     expansions: int,
@@ -83,6 +98,6 @@ def adversaries_by_expansions(
     ]
 
     return (
-        adversaries.cast({"Matchup": pl.Categorical}),
+        adversaries.cast({"Matchup": all_matchups}),
         matchups,
     )
