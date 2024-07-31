@@ -50,7 +50,7 @@ def test_calculate_matchups() -> None:
             case s if s == "S2":
                 # Take the lowest complexity among the best matchups
                 assert results["Complexity"][i] == 2
-                assert results["Difficulty"][i] == -2
+                assert results["Difficulty"][i] == pytest.approx(0.8)
             case s if s == "S3":
                 # F-tier matchups are excluded
                 pytest.fail("S3 was only f-tier")

@@ -48,22 +48,22 @@ def calculate_matchups(matchup: str, spirits: pl.LazyFrame) -> pl.LazyFrame:
         matchup_values = pl.LazyFrame(
             {
                 "Tier": ["X", "S", "A", "B", "C", "D", "F"],
-                "Difficulty": [-4, -2, -1, 0, 1, 2, 4],
+                "Difficulty": [0.7, 0.8, 0.9, 0.0, 1.1, 1.2, 1.3],
             },
             schema={
                 "Tier": pl.Utf8,
-                "Difficulty": pl.Int8,
+                "Difficulty": pl.Float32,
             },
         )
     else:
         matchup_values = pl.LazyFrame(
             {
                 matchup: ["S", "A", "B", "C", "D"],
-                "Difficulty": [-2, -1, 0, 1, 3],
+                "Difficulty": [0.8, 0.9, 0.0, 1.15, 1.3],
             },
             schema={
                 matchup: pl.Utf8,
-                "Difficulty": pl.Int8,
+                "Difficulty": pl.Float32,
             },
         )
 

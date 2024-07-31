@@ -18,7 +18,7 @@ def create_games(
             on=["Expansion", "Matchup"],
         )
         .with_columns(
-            pl.col("NDifficulty").add(pl.col("Difficulty")),
+            pl.col("NDifficulty").mul(pl.col("Difficulty")),
             pl.col("NComplexity").add(pl.col("Difficulty")),
         )
         .drop("Difficulty", "Complexity", "Matchup")
