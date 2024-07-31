@@ -49,10 +49,12 @@ def calculate_matchups(matchup: str, spirits: pl.LazyFrame) -> pl.LazyFrame:
             {
                 "Tier": ["X", "S", "A", "B", "C", "D", "F"],
                 "Difficulty": [0.7, 0.8, 0.9, 0.0, 1.1, 1.2, 1.3],
+                "Has D": [False * 7],
             },
             schema={
                 "Tier": pl.Utf8,
                 "Difficulty": pl.Float32,
+                "Has D": pl.Boolean,
             },
         )
     else:
@@ -60,10 +62,12 @@ def calculate_matchups(matchup: str, spirits: pl.LazyFrame) -> pl.LazyFrame:
             {
                 matchup: ["S", "A", "B", "C", "D"],
                 "Difficulty": [0.8, 0.9, 0.0, 1.15, 1.3],
+                "Has D": [False, False, False, False, True],
             },
             schema={
                 matchup: pl.Utf8,
                 "Difficulty": pl.Float32,
+                "Has D": pl.Boolean,
             },
         )
 
@@ -71,7 +75,7 @@ def calculate_matchups(matchup: str, spirits: pl.LazyFrame) -> pl.LazyFrame:
         spirits.clone()
         .join(matchup_values, on=matchup)
         .group_by(["Spirit", "Difficulty"])
-        .agg(pl.min("Complexity"))
+        .agg(pl.min("Complexity"), pl.all("Has D"))
         .filter(pl.col("Difficulty").eq(pl.min("Difficulty").over("Spirit")))
     )
 
@@ -86,7 +90,7 @@ def generate_combinations(
             matchups.clone()
             .with_columns(
                 [
-                    pl.col("Difficulty").cast(pl.Float32).alias("NDifficulty"),
+                    pl.col("Difficulty").alias("NDifficulty"),
                     pl.col("Complexity").cast(pl.Float32).alias("NComplexity"),
                     pl.col("Spirit").hash().alias("Hash"),
                 ],
@@ -97,6 +101,7 @@ def generate_combinations(
                 pl.col("Difficulty"),
                 pl.col("NComplexity"),
                 pl.col("Complexity"),
+                pl.col("Has D"),
                 pl.col("Spirit_0"),
                 pl.col("Hash"),
             )
@@ -123,12 +128,13 @@ def generate_combinations(
         .with_columns(
             pl.col("Difficulty").add(pl.col("Difficulty_right")),
             pl.col("Complexity").add(pl.col("Complexity_right")),
+            pl.col("Has D").or_(pl.col("Has D_right")),
             pl.col("Hash").add(pl.col(sp_col).hash()),
         )
         .with_columns(
             pl.col("Difficulty").truediv(players).cast(pl.Float32).alias("NDifficulty"),
             pl.col("Complexity").truediv(players).cast(pl.Float32).alias("NComplexity"),
         )
-        .drop("Difficulty_right", "Complexity_right")
+        .drop("Difficulty_right", "Complexity_right", "Has D_right")
         .unique("Hash")
     )

@@ -33,24 +33,28 @@ def test_calculate_matchups() -> None:
     matchup = "neiroatra"
     spirits = pl.LazyFrame(
         {
-            "Spirit": ["S1", "S1", "S2", "S2", "S2", "S4", "S4"],
-            "Complexity": [1, 2, 2, 1, 3, 0, 0],
-            matchup: ["A", "A", "S", "D", "S", "F", "F"],
+            "Spirit": ["S1", "S1", "S2", "S2", "S2", "S3", "S3", "S4", "S4"],
+            "Complexity": [1, 2, 2, 1, 3, 0, 0, 2, 2],
+            matchup: ["A", "A", "S", "D", "S", "F", "F", "D", "D"],
         },
     )
 
     results = uut(matchup, spirits).collect(streaming=True).to_dict(as_series=False)
 
-    assert len(results) == 3
+    assert len(results["Spirit"]) == 3
     for i in range(len(results["Spirit"])):
         match typing.cast(str, results["Spirit"][i]):
             case s if s == "S1":
                 # Take the lowest complexity
                 assert results["Complexity"][i] == 1
+                assert not results["Has D"][i]
             case s if s == "S2":
                 # Take the lowest complexity among the best matchups
                 assert results["Complexity"][i] == 2
                 assert results["Difficulty"][i] == pytest.approx(0.8)
+                assert not results["Has D"][i]
+            case s if s == "S4":
+                assert results["Has D"][i]
             case s if s == "S3":
                 # F-tier matchups are excluded
                 pytest.fail("S3 was only f-tier")
@@ -66,6 +70,7 @@ def test_generate_combinations() -> None:
             "Spirit": ["S1", "S2", "S3"],
             "Difficulty": [2, 4, 3],
             "Complexity": [4, 8, 3],
+            "Has D": [False, True, False],
         },
     )
     s = spirits.collect(streaming=True).to_dict(as_series=False)
@@ -88,16 +93,19 @@ def test_generate_combinations() -> None:
                 s1_s2_uniq = False
                 assert m2["NDifficulty"][i] == 3
                 assert m2["NComplexity"][i] == 6
+                assert m2["Has D"][i]
             case ["S1", "S3"]:
                 assert s1_s3_uniq
                 s1_s3_uniq = False
                 assert m2["NDifficulty"][i] == 2.5
                 assert m2["NComplexity"][i] == 3.5
+                assert not m2["Has D"][i]
             case ["S2", "S3"]:
                 assert s2_s3_uniq
                 s2_s3_uniq = False
                 assert m2["NDifficulty"][i] == 3.5
                 assert m2["NComplexity"][i] == 5.5
+                assert m2["Has D"][i]
             case _ as unknown:
                 pytest.fail(f"{unknown} was unexpected")
 
@@ -110,3 +118,4 @@ def test_generate_combinations() -> None:
     )
     assert m3["NDifficulty"][0] == 3
     assert m3["NComplexity"][0] == 5
+    assert m2["Has D"][i]
