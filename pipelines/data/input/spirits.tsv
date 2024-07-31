@@ -1,69 +1,69 @@
 Name	Aspect	Complexity	Expansions	Tier	France	Sweden	Scotland	Prussia	Livestock	England	Russia	Mines
-Lightning's Swift Strike		Low	1	C	B	C	C	C	D	D	D	C
-Lightning's Swift Strike	Pandemonium	Low	17	C	S	A	A	C	D	B	D	C
+Lightning's Swift Strike		Intro	1	C	B	C	C	C	D	D	D	C
+Lightning's Swift Strike	Pandemonium	Intro	17	C	S	A	A	C	D	B	D	C
 Lightning's Swift Strike	Immense	Low	9	D	C	D	B	C	D	B	C	C
 Lightning's Swift Strike	Wind	Low	17	C	B	C	C	C	D	D	D	C
-Lightning's Swift Strike	Sparking	Moderate	33	A	A	B	B	A	C	A	A	A
-River Surges in Sunlight		Low	1	B	B	C	C	B	B	D	B	C
-River Surges in Sunlight	Travel	Low	9	A	A	B	B	A	B	D	A	C
-River Surges in Sunlight	Sunshine	Moderate	17	F	D	D	D	D	D	D	F	F
-River Surges in Sunlight	Haven	Low	33	B	B	C	A	A	D	B	B	A
-Vital Strength of the Earth		Low	1	F	B	B	B	D	C	D	D	B
-Vital Strength of the Earth	Might	Moderate	9	B	B	A	A	B	C	C	B	C
-Vital Strength of the Earth	Resilience	Low	17	F	D	A	A	D	B	D	C	B
-Vital Strength of the Earth	Nourishing	Moderate	33	A	A	A	S	A	B	B	A	A
-Shadows Flicker Like Flame		Low	1	F	D	D	D	D	D	F	D	D
-Shadows Flicker Like Flame	Foreboding	Moderate	9	D	C	D	D	D	D	D	D	D
-Shadows Flicker Like Flame	Amorphous	Low	9	F	D	D	D	D	D	F	D	D
-Shadows Flicker Like Flame	Reach	Low	17	F	D	D	D	D	D	F	D	D
-Shadows Flicker Like Flame	Madness	Low	17	D	C	C	D	D	D	F	D	D
-Shadows Flicker Like Flame	Dark Fire	Low	33	C	C	D	D	C	D	C	C	D
+Lightning's Swift Strike	Sparking	Low	33	A	A	B	B	A	C	A	A	A
+River Surges in Sunlight		Intro	1	B	B	C	C	B	B	D	B	C
+River Surges in Sunlight	Travel	Intro	9	A	A	B	B	A	B	D	A	C
+River Surges in Sunlight	Sunshine	Low	17	F	D	D	D	D	D	D	F	F
+River Surges in Sunlight	Haven	Intro	33	B	B	C	A	A	D	B	B	A
+Vital Strength of the Earth		Intro	1	F	B	B	B	D	C	D	D	B
+Vital Strength of the Earth	Might	Low	9	B	B	A	A	B	C	C	B	C
+Vital Strength of the Earth	Resilience	Intro	17	F	D	A	A	D	B	D	C	B
+Vital Strength of the Earth	Nourishing	Low	33	A	A	A	S	A	B	B	A	A
+Shadows Flicker Like Flame		Intro	1	F	D	D	D	D	D	F	D	D
+Shadows Flicker Like Flame	Foreboding	Low	9	D	C	D	D	D	D	D	D	D
+Shadows Flicker Like Flame	Amorphous	Intro	9	F	D	D	D	D	D	F	D	D
+Shadows Flicker Like Flame	Reach	Intro	17	F	D	D	D	D	D	F	D	D
+Shadows Flicker Like Flame	Madness	Intro	17	D	C	C	D	D	D	F	D	D
+Shadows Flicker Like Flame	Dark Fire	Intro	33	C	C	D	D	C	D	C	C	D
 Thunderspeaker		Moderate	1	B	S	B	A	A	C	B	B	C
 Thunderspeaker	Warrior	Moderate	33	C	B	B	C	B	C	C	C	B
 Thunderspeaker	Tactician	Moderate	33	C	B	B	A	A	C	D	C	C
-A Spread of Rampant Green		Moderate	1	X	S	S	S	B	B	B	B	B
-A Spread of Rampant Green	Regrowth	Moderate	33	X	A	S	S	C	S	B	C	C
-A Spread of Rampant Green	Tangles	Moderate	33	A	S	S	S	A	B	B	A	A
-Bringer of Dreams and Nightmares		High	1	D	C	C	D	B	D	C	D	F
-Bringer of Dreams and Nightmares	Enticing	High	33	B	B	B	B	B	A	C	A	D
+A Spread of Rampant Green		Low	1	X	S	S	S	B	B	B	B	B
+A Spread of Rampant Green	Regrowth	Low	33	X	A	S	S	C	S	B	C	C
+A Spread of Rampant Green	Tangles	Low	33	A	S	S	S	A	B	B	A	A
+Bringer of Dreams and Nightmares		Moderate	1	D	C	C	D	B	D	C	D	F
+Bringer of Dreams and Nightmares	Enticing	Moderate	33	B	B	B	B	B	A	C	A	D
 Bringer of Dreams and Nightmares	Violence	Moderate	33	B	B	C	B	A	D	C	D	F
-Ocean's Hungry Grasp		High	1	C	A	D	C	A	D	C	C	D
+Ocean's Hungry Grasp		Moderate	1	C	A	D	C	A	D	C	C	D
 Ocean's Hungry Grasp	Deeps	High	33	C	A	D	C	A	D	D	C	D
-Sharp Fangs Behind the Leaves		Moderate	4	B	B	B	B	B	A	A	B	C
-Sharp Fangs Behind the Leaves	Unconstrained	Moderate	36	B	B	B	B	B	A	A	B	C
-Sharp Fangs Behind the Leaves	Encircle	Moderate	36	B	B	B	A	B	A	C	A	B
-Keeper of the Forbidden Wilds		Moderate	4	S	A	B	A	B	A	A	S	B
-Keeper of the Forbidden Wilds	Spreading Hostility	Moderate	36	B	A	B	B	A	D	C	B	B
-Devouring Teeth Lurk Underfoot		Low	2	D	B	A	B	B	C	C	D	C
-Eyes Watch from the Trees		Low	2	A	A	A	S	A	B	A	B	S
-Fathomless Mud of the Swamp		Low	2	B	A	B	B	S	C	S	F	C
-Rising Heat of Stone and Sand		Low	2	B	A	S	S	A	B	C	B	B
-Sun-Bright Whirlwind		Low	2	B	S	B	B	A	B	D	A	C
-Stone's Unyielding Defiance		Moderate	8	X	B	B	S	A	S	A	S	B
-Grinning Trickster Stirs Up Trouble		Moderate	8	A	S	S	A	A	C	B	A	B
+Sharp Fangs Behind the Leaves		Low	4	B	B	B	B	B	A	A	B	C
+Sharp Fangs Behind the Leaves	Unconstrained	Low	36	B	B	B	B	B	A	A	B	C
+Sharp Fangs Behind the Leaves	Encircle	Low	36	B	B	B	A	B	A	C	A	B
+Keeper of the Forbidden Wilds		Low	4	S	A	B	A	B	A	A	S	B
+Keeper of the Forbidden Wilds	Spreading Hostility	Low	36	B	A	B	B	A	D	C	B	B
+Devouring Teeth Lurk Underfoot		Intro	2	D	B	A	B	B	C	C	D	C
+Eyes Watch from the Trees		Intro	2	A	A	A	S	A	B	A	B	S
+Fathomless Mud of the Swamp		Intro	2	B	A	B	B	S	C	S	F	C
+Rising Heat of Stone and Sand		Intro	2	B	A	S	S	A	B	C	B	B
+Sun-Bright Whirlwind		Intro	2	B	S	B	B	A	B	D	A	C
+Stone's Unyielding Defiance		Low	8	X	B	B	S	A	S	A	S	B
+Grinning Trickster Stirs Up Trouble		Low	8	A	S	S	A	A	C	B	A	B
 Many Minds Move as One		Moderate	8	S	A	S	S	A	S	A	A	B
 Volcano Looming High		Moderate	8	A	A	A	S	A	B	B	B	A
-Shifting Memory of Ages		Moderate	8	C	B	D	C	B	D	B	C	C
-Shifting Memory of Ages	Mentor	High	40	C	B	D	D	C	D	C	D	D
-Shifting Memory of Ages	Intensify	Moderate	40	A	B	A	A	B	A	A	B	B
+Shifting Memory of Ages		Low	8	C	B	D	C	B	D	B	C	C
+Shifting Memory of Ages	Mentor	Moderate	40	C	B	D	D	C	D	C	D	D
+Shifting Memory of Ages	Intensify	Low	40	A	B	A	A	B	A	A	B	B
 Lure of the Deep Wilderness		Moderate	8	A	S	C	C	A	B	A	S	A
 Lure of the Deep Wilderness	Lair	Moderate	40	B	A	B	B	A	B	C	B	C
 Vengeance as a Burning Plague		High	8	B	A	A	A	B	A	B	B	B
 Shroud of Silent Mist		High	8	D	C	B	C	B	F	D	C	C
 Shroud of Silent Mist	Stranded	High	40	B	A	A	A	B	B	B	B	C
 Fractured Days Split the Sky		Very High	8	X	B	S	A	C	B	B	B	B
-Starlight Seeks Its Form		Very High	8	S	A	S	S	B	S	A	S	B
-Heart of the Wildfire		High	16	D	B	A	C	B	B	F	D	C
+Starlight Seeks Its Form		High	8	S	A	S	S	B	S	A	S	B
+Heart of the Wildfire		Moderate	16	D	B	A	C	B	B	F	D	C
 Heart of the Wildfire	Transforming	High	48	B	B	A	C	B	A	C	A	C
-Serpent Slumbering Beneath the Island		High	16	A	C	B	B	A	C	A	C	B
+Serpent Slumbering Beneath the Island		Moderate	16	A	C	B	B	A	C	A	C	B
 Serpent Slumbering Beneath the Island	Locus	High	48	B	D	D	D	C	D	C	C	C
-Downpour Drenches the World		High	16	S	A	A	A	S	B	B	A	B
+Downpour Drenches the World		Moderate	16	S	A	A	A	S	B	B	A	B
 Finder of Paths Unseen		Very High	16	A	B	S	S	S	A	B	B	C
-Ember-Eyed Behemoth		Moderate	32	B	S	S	A	A	B	B	B	A
+Ember-Eyed Behemoth		Low	32	B	S	S	A	A	B	B	B	A
 Hearth-Vigil		Moderate	32	X	S	A	A	S	S	A	B	S
 Towering Roots of the Jungle		Moderate	32	S	A	B	S	A	S	A	B	B
-Wandering Voice Keens Delirium		High	32	A	A	S	B	B	C	B	D	D
+Wandering Voice Keens Delirium		Moderate	32	A	A	S	B	B	C	B	D	D
 Relentless Gaze of the Sun		High	32	S	A	S	S	A	S	A	S	B
-Wounded Waters Bleeding		High	32	B	B	D	C	C	C	C	B	D
+Wounded Waters Bleeding		Moderate	32	B	B	D	C	C	C	C	B	D
 Breath of Darkness Down Your Spine		High	32	B	S	A	B	A	C	B	B	C
-Dances Up Earthquakes		Very High	32	X	B	S	S	B	A	A	A	B
+Dances Up Earthquakes		High	32	X	B	S	S	B	A	A	A	B
