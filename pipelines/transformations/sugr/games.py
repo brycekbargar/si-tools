@@ -61,22 +61,32 @@ def _buckets(
         ),
     )
 
-    (difficulty, complexity) = pl.collect_all(
-        [
-            all_games.clone()
-            .with_columns(
-                pl.col("NDifficulty")
-                .qcut(
-                    difficulty_count,
-                    labels=[str(label) for label in range(difficulty_count)],
-                    include_breaks=True,
-                )
-                .alias("qcut"),
+    difficulty = (
+        all_games.clone()
+        .with_columns(
+            pl.col("NDifficulty")
+            .qcut(
+                difficulty_count,
+                labels=[str(label) for label in range(difficulty_count)],
+                include_breaks=True,
             )
-            .unnest("qcut")
-            .select("breakpoint", "category")
-            .unique(),
+            .alias("qcut"),
+        )
+        .unnest("qcut")
+        .select("breakpoint", "category")
+        .unique()
+    ).collect(streaming=True)
+
+    d_min = -99
+    for d_max, d in difficulty.sort("category").rows():
+        c_min = -99
+
+        complexity = (
             all_games.clone()
+            .filter(
+                pl.col("NDifficulty").gt(d_min),
+                pl.col("NDifficulty").le(d_max),
+            )
             .with_columns(
                 pl.col("NComplexity")
                 .qcut(
@@ -88,14 +98,9 @@ def _buckets(
             )
             .unnest("qcut")
             .select("breakpoint", "category")
-            .unique(),
-        ],
-        streaming=True,
-    )
+            .unique()
+        ).collect(streaming=True)
 
-    d_min = -99
-    for d_max, d in difficulty.sort("category").rows():
-        c_min = -99
         for c_max, c in complexity.sort("category").rows():
             yield Bucket(
                 name,
