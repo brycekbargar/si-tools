@@ -141,6 +141,28 @@ def generate_combinations(
     )
 
 
+def _write_combinations(output: str) -> None:
+    import csv
+    from itertools import combinations
+    from pathlib import Path
+
+    for i in range(2, 7):
+        combos_csv = Path(output, f"{i}.csv")
+        combos_csv.unlink(missing_ok=True)
+        with combos_csv.open("w+", newline="") as combos_file:
+            writer = csv.writer(combos_file)
+            writer.writerow([f"Spirit_{p}" for p in range(i)])
+
+            for c in combinations(_all_spirits.categories.to_list(), i):
+                writer.writerow(c)
+
+        combos_parquet = Path(output, f"{i}.parquet")
+        combos_parquet.unlink(missing_ok=True)
+        pl.scan_csv(combos_csv).sink_parquet(combos_parquet)
+
+        combos_csv.unlink(missing_ok=True)
+
+
 _all_spirits = pl.Enum(
     [
         "Lightning's Swift Strike",
@@ -182,3 +204,8 @@ _all_spirits = pl.Enum(
         "Dances Up Earthquakes",
     ],
 )
+
+if __name__ == "__main__":
+    import sys
+
+    _write_combinations(sys.argv[1])

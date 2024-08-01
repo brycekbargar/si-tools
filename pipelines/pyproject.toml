@@ -26,6 +26,7 @@ dev = [
 
 [tool.pdm.scripts]
 test = "python -m pytest -vv"
+combos = "python -m transformations.sugr.spirits ./data/input/combinations"
 flow_islands = "python -m flows.sugr.islands_flow --environment=conda run --input ./data/input/"
 flow_games = "python -m flows.sugr.games_flow --environment=conda run --input ./data/input/"
 flow_site = "python -m flows.site.sugr_flow --environment=conda run --output ./../site/data/"

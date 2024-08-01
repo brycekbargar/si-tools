@@ -2,13 +2,13 @@
 [commands."common.EOF"]
 type = "tidy"
 include = ["*"]
-exclude = ["*.feather"]
+exclude = ["*.feather", "*.parquet"]
 cmd = ["end-of-file-fixer"]
 ok_exit_codes = [0, 1]
 [commands."common.whitespace"]
 type = "tidy"
 include = ["*"]
-exclude = ["*.feather"]
+exclude = ["*.feather", "*.parquet"]
 cmd = ["trailing-whitespace-fixer", "--markdown-linebreak-ext=md"]
 ok_exit_codes = [0, 1]
 [commands."common.large-files"]
