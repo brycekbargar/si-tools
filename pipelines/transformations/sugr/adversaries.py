@@ -23,9 +23,8 @@ def adversaries_by_expansions(
         .drop("Expansion")
         .with_columns(
             [
-                pl.col("Difficulty").cast(pl.Int8),
-                pl.col("Complexity").cast(pl.Int8),
-                pl.col("Level").cast(pl.Int8),
+                pl.col("Difficulty").cast(pl.UInt8),
+                pl.col("Level").cast(pl.UInt8),
             ],
         )
         .cast(
@@ -50,8 +49,8 @@ def adversaries_by_expansions(
                     .with_columns(
                         [
                             pl.lit("Escalation").alias("Name"),
-                            pl.lit(1).cast(pl.Int8).alias("Difficulty"),
-                            pl.lit(0).cast(pl.Int8).alias("Complexity"),
+                            pl.lit(1).cast(pl.UInt8).alias("Difficulty"),
+                            pl.lit("Intro").alias("Complexity"),
                             pl.lit("Tier").alias("Matchup"),
                         ],
                     )
@@ -79,6 +78,21 @@ def adversaries_by_expansions(
     ]
 
     return (
-        adversaries.rename({"Name": "Adversary"}),
+        adversaries.join(
+            pl.LazyFrame(
+                {
+                    "Complexity": ["Intro", "Low", "Moderate", "High", "Very High"],
+                    "Value": [0, 1, 3, 6, 127],
+                },
+                schema={
+                    "Complexity": pl.String,
+                    "Value": pl.UInt8,
+                },
+            ),
+            on="Complexity",
+            how="left",
+        )
+        .drop("Complexity")
+        .rename({"Name": "Adversary", "Value": "Complexity"}),
         matchups,
     )

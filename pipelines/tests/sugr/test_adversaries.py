@@ -29,7 +29,7 @@ class TestAdversariesByExpansions:
                 "Mines",
             ],
             "Difficulty": [0] * 8,
-            "Complexity": [0] * 8,
+            "Complexity": ["Moderate"] * 8,
         },
     )
     escalations = pl.LazyFrame(

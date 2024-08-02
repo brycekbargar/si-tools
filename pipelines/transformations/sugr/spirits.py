@@ -19,7 +19,7 @@ def spirits_by_expansions(expansions: int, spirits: pl.LazyFrame) -> pl.LazyFram
                     # https://discord.com/channels/846580409050857493/846580409050857496/1162666833015488573
                     "Complexity": ["Intro", "Low", "Moderate", "High", "Very High"],
                     # Fractured and Finder should always be in the highest bucket.
-                    "Value": [0, 1, 3, 5, 255],
+                    "Value": [0, 1, 3, 6, 127],
                 },
                 schema={
                     "Complexity": pl.String,
