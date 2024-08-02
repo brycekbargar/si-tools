@@ -17,14 +17,14 @@ def create_games(
         .join(
             combos.clone()
             .cast({"Matchup": _all_matchups})
-            .drop("Difficulty", "Complexity", "Hash"),
+            .drop("Difficulty", "Complexity"),
             on=["Expansion", "Matchup"],
         )
         .with_columns(
-            pl.col("NDifficulty").mul(pl.col("Difficulty")),
-            pl.col("NComplexity").add(pl.col("Difficulty")),
+            pl.col("Difficulty").mul(pl.col("Difficulty_right")),
+            pl.col("Complexity").add(pl.col("Complexity_right")),
         )
-        .drop("Difficulty", "Complexity", "Matchup")
+        .drop("Matchup")
     )
 
 
@@ -64,7 +64,7 @@ def _buckets(
     difficulty = (
         all_games.clone()
         .with_columns(
-            pl.col("NDifficulty")
+            pl.col("Difficulty")
             .qcut(
                 difficulty_count,
                 labels=[str(label) for label in range(difficulty_count)],
@@ -84,11 +84,11 @@ def _buckets(
         complexity = (
             all_games.clone()
             .filter(
-                pl.col("NDifficulty").gt(d_min),
-                pl.col("NDifficulty").le(d_max),
+                pl.col("Difficulty").gt(d_min),
+                pl.col("Difficulty").le(d_max),
             )
             .with_columns(
-                pl.col("NComplexity")
+                pl.col("Complexity")
                 .qcut(
                     complexity_count,
                     labels=[str(label) for label in range(complexity_count)],
@@ -106,10 +106,10 @@ def _buckets(
                 name,
                 pl.Expr.and_(
                     sp_filter,
-                    pl.col("NDifficulty").gt(d_min),
-                    pl.col("NDifficulty").le(d_max),
-                    pl.col("NComplexity").gt(c_min),
-                    pl.col("NComplexity").le(c_max),
+                    pl.col("Difficulty").gt(d_min),
+                    pl.col("Difficulty").le(d_max),
+                    pl.col("Complexity").gt(c_min),
+                    pl.col("Complexity").le(c_max),
                 ),
                 d,
                 c,
@@ -161,8 +161,8 @@ def filter_by_bucket(
 ) -> pl.LazyFrame:
     """Filter the given set of games to bucket based on difficulty/complexity."""
     return all_games.filter(bucket.expr).drop(
-        "NDifficulty",
-        "NComplexity",
+        "Difficulty",
+        "Complexity",
         "Has D",
     )
 

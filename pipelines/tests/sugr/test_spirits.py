@@ -1,4 +1,5 @@
 import typing
+from itertools import combinations
 
 import polars as pl
 import pytest
@@ -65,22 +66,36 @@ def test_calculate_matchups() -> None:
 def test_generate_combinations() -> None:
     from transformations.sugr.spirits import generate_combinations as uut
 
-    spirits = pl.LazyFrame(
+    spirits = ["Thunderspeaker", "Hearth-Vigil", "Volcano Looming High"]
+    matchups = pl.LazyFrame(
         {
-            "Spirit": ["Thunderspeaker", "Hearth-Vigil", "Volcano Looming High"],
-            "Hash": [1, 2, 3],
-            "Difficulty": [2, 4, 3],
+            "Spirit": spirits,
+            "Difficulty": [2.0, 4, 3],
             "Complexity": [4, 8, 3],
             "Has D": [False, True, False],
         },
     )
-    s = spirits.collect(streaming=True).to_dict(as_series=False)
+    s = matchups.collect(streaming=True).to_dict(as_series=False)
 
-    m1lf = uut(spirits)
+    m1lf = uut(1, matchups, pl.LazyFrame())
     m1 = m1lf.collect(streaming=True).to_dict(as_series=False)
     assert sorted(m1["Spirit_0"]) == sorted(s["Spirit"])
 
-    m2lf = uut(spirits, previous_combos=m1lf)
+    def combos(pc: int) -> pl.LazyFrame:
+        return pl.LazyFrame(
+            combinations(
+                [
+                    *spirits,
+                    "Devouring Teeth Lurk Underfoot",
+                    "Ocean's Hungry Grasp",
+                ],
+                pc,
+            ),
+            schema={f"Spirit_{p}": pl.String for p in range(pc)},
+            orient="row",
+        )
+
+    m2lf = uut(2, matchups, combos(2))
     m2 = m2lf.collect(streaming=True).to_dict(as_series=False)
     assert len(m2["Spirit_0"]) == 3
 
@@ -92,31 +107,31 @@ def test_generate_combinations() -> None:
             case ["Hearth-Vigil", "Thunderspeaker"]:
                 assert s1_s2_uniq
                 s1_s2_uniq = False
-                assert m2["NDifficulty"][i] == 3
-                assert m2["NComplexity"][i] == 6
+                assert m2["Difficulty"][i] == 3
+                assert m2["Complexity"][i] == 6
                 assert m2["Has D"][i]
             case ["Thunderspeaker", "Volcano Looming High"]:
                 assert s1_s3_uniq
                 s1_s3_uniq = False
-                assert m2["NDifficulty"][i] == 2.5
-                assert m2["NComplexity"][i] == 3.5
+                assert m2["Difficulty"][i] == 2.5
+                assert m2["Complexity"][i] == 3.5
                 assert not m2["Has D"][i]
             case ["Hearth-Vigil", "Volcano Looming High"]:
                 assert s2_s3_uniq
                 s2_s3_uniq = False
-                assert m2["NDifficulty"][i] == 3.5
-                assert m2["NComplexity"][i] == 5.5
+                assert m2["Difficulty"][i] == 3.5
+                assert m2["Complexity"][i] == 5.5
                 assert m2["Has D"][i]
             case _ as unknown:
                 pytest.fail(f"{unknown} was unexpected")
 
-    m3lf = uut(spirits, previous_combos=m2lf)
+    m3lf = uut(3, matchups, combos(3))
     m3 = m3lf.collect(streaming=True).to_dict(as_series=False)
     assert len(m3["Spirit_0"]) == 1
 
     assert sorted((m3["Spirit_0"][0], m3["Spirit_1"][0], m3["Spirit_2"][0])) == sorted(
         ["Hearth-Vigil", "Thunderspeaker", "Volcano Looming High"],
     )
-    assert m3["NDifficulty"][0] == 3
-    assert m3["NComplexity"][0] == 5
+    assert m3["Difficulty"][0] == 3
+    assert m3["Complexity"][0] == 5
     assert m3["Has D"][0]

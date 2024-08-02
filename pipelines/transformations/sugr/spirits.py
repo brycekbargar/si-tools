@@ -1,6 +1,7 @@
 """Provides operations on LazyFrames related to spirits."""
 
 import polars as pl
+import polars.selectors as cs
 
 
 def spirits_by_expansions(expansions: int, spirits: pl.LazyFrame) -> pl.LazyFrame:
@@ -63,81 +64,54 @@ def calculate_matchups(matchup: str, spirits: pl.LazyFrame) -> pl.LazyFrame:
         )
 
     return (
-        (
-            spirits.clone()
-            .join(matchup_values, on=matchup)
-            .group_by(["Spirit", "Difficulty"])
-            .agg(pl.min("Complexity"), pl.all("Has D"))
-            .filter(pl.col("Difficulty").eq(pl.min("Difficulty").over("Spirit")))
-            .with_columns(pl.col("Spirit").hash().alias("Hash"))
-        )
-        .collect(streaming=True)
-        .lazy()
+        spirits.clone()
+        .join(matchup_values, on=matchup)
+        .group_by(["Spirit", "Difficulty"])
+        .agg(pl.min("Complexity"), pl.all("Has D"))
+        .sort("Spirit", "Difficulty")
+        .unique("Spirit", keep="first")
     )
 
 
 def generate_combinations(
+    players: int,
     matchups: pl.LazyFrame,
-    previous_combos: pl.LazyFrame | None = None,
+    combos: pl.LazyFrame,
 ) -> pl.LazyFrame:
-    """Generate all possible combinations of spirits."""
-    if previous_combos is None:
+    """Filters and calculates complexity/difficulty for combinations of spirits."""
+    if players == 1:
         return (
             matchups.clone()
-            .with_columns(
-                [
-                    pl.col("Difficulty").alias("NDifficulty"),
-                    pl.col("Complexity").cast(pl.Float32).alias("NComplexity"),
-                ],
-            )
+            .with_columns(pl.col("Complexity").cast(pl.Float32))
             .rename({"Spirit": "Spirit_0"})
-            .select(
-                pl.col("NDifficulty"),
-                pl.col("Difficulty"),
-                pl.col("NComplexity"),
-                pl.col("Complexity"),
-                pl.col("Has D"),
-                pl.col("Spirit_0"),
-                pl.col("Hash"),
-            )
         )
 
-    previous_schema = previous_combos.collect_schema()
-    players = len([c for c in previous_schema.names() if c.startswith("Spirit")]) + 1
-    sp_col = f"Spirit_{(players-1)}"
-    spirit_n = pl.col(sp_col)
-    unique_spirits = pl.Expr.not_(spirit_n.eq_missing(pl.col("Spirit_0")))
-    cast_enum: dict[str, pl.DataType] = {"Spirit_0": _all_spirits}
-    cast_string: dict[str, pl.DataType] = {"Spirit_0": pl.String}
-    for i in range(players - 2, 0, -1):
-        unique_spirits = unique_spirits.and_(
-            pl.Expr.not_(spirit_n.eq_missing(pl.col(f"Spirit_{i}"))),
+    combos = combos.clone().cast({f"Spirit_{p}": _all_spirits for p in range(players)})
+    matchups = matchups.clone().cast({"Spirit": _all_spirits})
+    for p in range(players):
+        combos = combos.clone().join(
+            matchups,
+            left_on=f"Spirit_{p}",
+            right_on="Spirit",
+            suffix=f"-{p}",
         )
-        cast_enum[f"Spirit_{i+1}"] = _all_spirits
-        cast_string[f"Spirit_{i+1}"] = pl.String
 
     return (
-        matchups.clone()
-        .join(
-            previous_combos.clone(),
-            how="cross",
-        )
-        .rename({"Spirit": sp_col})
-        .cast(cast_enum)
-        .filter(unique_spirits)
+        combos.clone()
         .with_columns(
-            pl.col("Difficulty").add(pl.col("Difficulty_right")),
-            pl.col("Complexity").add(pl.col("Complexity_right")),
-            pl.col("Has D").or_(pl.col("Has D_right")),
-            pl.col("Hash").add(pl.col("Hash_right")),
+            pl.mean_horizontal(cs.starts_with("Difficulty")).alias("Difficulty"),
+            pl.mean_horizontal(cs.starts_with("Complexity")).alias("Complexity"),
+            pl.sum_horizontal(cs.starts_with("Has D")).cast(pl.Boolean).alias("Has D"),
         )
-        .with_columns(
-            pl.col("Difficulty").truediv(players).cast(pl.Float32).alias("NDifficulty"),
-            pl.col("Complexity").truediv(players).cast(pl.Float32).alias("NComplexity"),
+        .cast({f"Spirit_{p}": pl.String for p in range(players)})
+        .select(
+            [
+                *[f"Spirit_{p}" for p in range(players)],
+                "Difficulty",
+                "Complexity",
+                "Has D",
+            ],
         )
-        .drop("Difficulty_right", "Complexity_right", "Has D_right", "Hash_right")
-        .cast(cast_string)
-        .unique("Hash")
     )
 
 
@@ -146,7 +120,7 @@ def _write_combinations(output: str) -> None:
     from itertools import combinations
     from pathlib import Path
 
-    for i in range(2, 7):
+    for i in range(1, 7):
         combos_csv = Path(output, f"{i}.csv")
         combos_csv.unlink(missing_ok=True)
         with combos_csv.open("w+", newline="") as combos_file:

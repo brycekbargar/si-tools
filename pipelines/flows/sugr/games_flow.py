@@ -78,6 +78,10 @@ class SugrGamesFlow(FlowSpec):
             input_dir / "spirits.tsv",
         )
 
+        self.input_combinations = {
+            i: input_dir / "combinations" / f"{i}.parquet" for i in range(1, 7)
+        }
+
         self.next(self.fanout_expansions)
 
     @step
@@ -99,14 +103,14 @@ class SugrGamesFlow(FlowSpec):
             self.ephemeral.path,
             "matchups",
             Expansion=pl.UInt8,  # type: ignore [argumentType]
-            Matchup=pl.String,
+            Matchup=pl.String,  # type: ignore [argumentType]
         )
         self.combinations_ds = HiveDataset(
             self.ephemeral.path,
             "combinations",
             Expansion=pl.UInt8,  # type: ignore [argumentType]
             Players=pl.UInt8,  # type: ignore [argumentType]
-            Matchup=pl.String,
+            Matchup=pl.String,  # type: ignore [argumentType]
         )
 
         exp = self.input_expansions_ds.read()
@@ -166,46 +170,43 @@ class SugrGamesFlow(FlowSpec):
             Matchup=self.matchup,
         )
 
-        self.next(self.generate_combinations)
+        self.next(self.fanout_players)
+
+    @step
+    def fanout_players(self) -> None:
+        self.next(self.generate_combinations, foreach=range(1, self.max_players + 1))
 
     @step
     def generate_combinations(self) -> None:
+        import polars as pl
+
         from transformations.sugr.spirits import generate_combinations
 
-        for pc in range(self.max_players):
-            print(self.expansion, self.matchup, pc + 1)
-            if pc == 0:
-                self.combinations_ds.write(
-                    generate_combinations(
-                        self.matchups_ds.read(
-                            Expansion=self.expansion,
-                            Matchup=self.matchup,
-                        ),
-                    ),
+        pc = typing.cast(int, self.input)
+
+        print(self.expansion, self.matchup, pc)
+        self.combinations_ds.write(
+            generate_combinations(
+                pc,
+                self.matchups_ds.read(
                     Expansion=self.expansion,
-                    Players=1,
                     Matchup=self.matchup,
-                )
-                continue
-
-            self.combinations_ds.write(
-                generate_combinations(
-                    self.matchups_ds.read(
-                        Expansion=self.expansion,
-                        Matchup=self.matchup,
-                    ),
-                    self.combinations_ds.read(
-                        low_memory=True,
-                        Expansion=self.expansion,
-                        Matchup=self.matchup,
-                        Players=pc,
-                    ),
                 ),
-                Expansion=self.expansion,
-                Players=pc + 1,
-                Matchup=self.matchup,
-            )
+                pl.scan_parquet(self.input_combinations[pc]),
+            ),
+            Expansion=self.expansion,
+            Players=pc,
+            Matchup=self.matchup,
+        )
 
+        self.next(self.collect_players)
+
+    @step
+    def collect_players(self, inputs: typing.Any) -> None:
+        self.merge_artifacts(
+            inputs,
+            include=[*__OUTPUT_ARTIFACTS__, *__DATASETS__],
+        )
         self.next(self.collect_matchups)
 
     @step
