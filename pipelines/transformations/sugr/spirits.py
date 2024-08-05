@@ -64,12 +64,17 @@ def calculate_matchups(matchup: str, spirits: pl.LazyFrame) -> pl.LazyFrame:
         )
 
     return (
-        spirits.clone()
-        .join(matchup_values, on=matchup)
-        .group_by(["Spirit", "Difficulty"])
-        .agg(pl.min("Complexity"), pl.all("Has D"))
-        .sort("Spirit", "Difficulty")
-        .unique("Spirit", keep="first")
+        (
+            spirits.clone()
+            .join(matchup_values, on=matchup)
+            .group_by(["Spirit", "Difficulty"])
+            .agg(pl.min("Complexity"), pl.all("Has D"))
+            .sort("Spirit", "Difficulty")
+            .unique("Spirit", keep="first")
+        )
+        # something isn't support by sink_parquet as of 1.2.1
+        .collect(streaming=True)
+        .lazy()
     )
 
 
@@ -97,21 +102,28 @@ def generate_combinations(
         )
 
     return (
-        combos.clone()
-        .with_columns(
-            pl.mean_horizontal(cs.starts_with("Difficulty")).alias("Difficulty"),
-            pl.mean_horizontal(cs.starts_with("Complexity")).alias("Complexity"),
-            pl.sum_horizontal(cs.starts_with("Has D")).cast(pl.Boolean).alias("Has D"),
+        (
+            combos.clone()
+            .with_columns(
+                pl.mean_horizontal(cs.starts_with("Difficulty")).alias("Difficulty"),
+                pl.mean_horizontal(cs.starts_with("Complexity")).alias("Complexity"),
+                pl.sum_horizontal(cs.starts_with("Has D"))
+                .cast(pl.Boolean)
+                .alias("Has D"),
+            )
+            .cast({f"Spirit_{p}": pl.String for p in range(players)})
+            .select(
+                [
+                    *[f"Spirit_{p}" for p in range(players)],
+                    "Difficulty",
+                    "Complexity",
+                    "Has D",
+                ],
+            )
         )
-        .cast({f"Spirit_{p}": pl.String for p in range(players)})
-        .select(
-            [
-                *[f"Spirit_{p}" for p in range(players)],
-                "Difficulty",
-                "Complexity",
-                "Has D",
-            ],
-        )
+        # horizontal isn't support by sink_parquet as of 1.2.1
+        .collect(streaming=True)
+        .lazy()
     )
 
 

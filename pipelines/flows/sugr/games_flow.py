@@ -174,7 +174,8 @@ class SugrGamesFlow(FlowSpec):
 
     @step
     def fanout_players(self) -> None:
-        self.next(self.generate_combinations, foreach=range(1, self.max_players + 1))
+        self.pc = list(range(1, self.max_players + 1))
+        self.next(self.generate_combinations, foreach="pc")
 
     @step
     def generate_combinations(self) -> None:

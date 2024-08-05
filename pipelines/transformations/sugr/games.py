@@ -15,9 +15,7 @@ def create_games(
         adversaries.clone()
         .cast({"Matchup": _all_matchups})
         .join(
-            combos.clone()
-            .cast({"Matchup": _all_matchups})
-            .drop("Difficulty", "Complexity"),
+            combos.clone().cast({"Matchup": _all_matchups}),
             on=["Expansion", "Matchup"],
         )
         .with_columns(
@@ -38,7 +36,7 @@ class Bucket:
     complexity: int
 
     def __str__(self) -> str:
-        return f"{self.name} ({self.difficulty}, {self.complexity}):\n{self.expr}"
+        return f"{self.name} ({self.difficulty}, {self.complexity})"
 
 
 def horizons_bucket() -> Bucket:
