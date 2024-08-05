@@ -34,10 +34,10 @@ Habsburg Monarchy (Livestock Colony)	4	16	Livestock	8	High
 Habsburg Monarchy (Livestock Colony)	5	16	Livestock	9	High
 Habsburg Monarchy (Livestock Colony)	6	16	Livestock	10	High
 The Tsardom of Russia	0	16	Tier	1	Intro
-The Tsardom of Russia	1	16	Tier	3	Low
-The Tsardom of Russia	2	16	Tier	4	Low
-The Tsardom of Russia	3	16	Russia	6	Moderate
-The Tsardom of Russia	4	16	Russia	8	Moderate
+The Tsardom of Russia	1	16	Tier	3	Moderate
+The Tsardom of Russia	2	16	Tier	4	Moderate
+The Tsardom of Russia	3	16	Russia	6	High
+The Tsardom of Russia	4	16	Russia	8	High
 The Tsardom of Russia	5	16	Russia	10	High
 The Tsardom of Russia	6	16	Russia	11	High
 The Kingdom of Scotland	0	8	Tier	1	Intro
@@ -48,9 +48,9 @@ The Kingdom of Scotland	4	8	Scotland	7	Moderate
 The Kingdom of Scotland	5	8	Scotland	8	Moderate
 The Kingdom of Scotland	6	8	Scotland	10	Moderate
 Habsburg Mining Expedition	0	32	Tier	1	Intro
-Habsburg Mining Expedition	1	32	Tier	3	Moderate
-Habsburg Mining Expedition	2	32	Tier	4	Moderate
-Habsburg Mining Expedition	3	32	Mines	5	Moderate
-Habsburg Mining Expedition	4	32	Mines	7	High
-Habsburg Mining Expedition	5	32	Mines	9	High
+Habsburg Mining Expedition	1	32	Tier	3	High
+Habsburg Mining Expedition	2	32	Tier	4	High
+Habsburg Mining Expedition	3	32	Mines	5	High
+Habsburg Mining Expedition	4	32	Mines	7	Very High
+Habsburg Mining Expedition	5	32	Mines	9	Very High
 Habsburg Mining Expedition	6	32	Mines	10	Very High
