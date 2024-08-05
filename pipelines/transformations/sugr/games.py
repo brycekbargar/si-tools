@@ -44,28 +44,25 @@ def horizons_bucket() -> Bucket:
     return Bucket("Horizons", pl.col("Expansion").eq(2), 0, 0)
 
 
-def _buckets(
-    name: str,
+def preje_buckets(
     all_games: pl.LazyFrame,
-    sp_filter: pl.Expr,
-    difficulty_count: int,
-    complexity_count: int,
 ) -> typing.Iterator[Bucket]:
-    all_games = all_games.clone().filter(
+    """Find difficulty/complexity ranges to bucket pre-jagged earth games into."""
+    representative_games = all_games.clone().filter(
         pl.Expr.and_(
-            sp_filter,
+            pl.col("Expansion").eq(pl.lit(16)),
             pl.col("Players").gt(pl.lit(1)),
-            pl.col("Players").le(pl.lit(4)),
+            pl.col("Players").le(pl.lit(3)),
         ),
     )
 
     difficulty = (
-        all_games.clone()
+        representative_games.clone()
         .with_columns(
             pl.col("Difficulty")
             .qcut(
-                difficulty_count,
-                labels=[str(label) for label in range(difficulty_count)],
+                3,
+                labels=[str(label) for label in range(3)],
                 include_breaks=True,
             )
             .alias("qcut"),
@@ -77,21 +74,74 @@ def _buckets(
 
     d_min = -99
     for d_max, d in difficulty.sort("category").rows():
-        if complexity_count == 0:
-            yield Bucket(
-                name,
-                pl.Expr.and_(
-                    sp_filter,
-                    pl.col("Difficulty").gt(d_min),
-                    pl.col("Difficulty").le(d_max),
+        yield Bucket(
+            "Pre Jagged Earth (Birb)",
+            pl.Expr.and_(
+                pl.col("Expansion").lt(pl.lit(17)),
+                pl.col("Difficulty").gt(d_min),
+                pl.col("Difficulty").le(d_max),
+                pl.col("Spirit_0").ne_missing("Finder of Paths Unseen"),
+                pl.col("Spirit_1").ne_missing("Finder of Paths Unseen"),
+                pl.col("Spirit_2").ne_missing("Finder of Paths Unseen"),
+                pl.col("Spirit_3").ne_missing("Finder of Paths Unseen"),
+            ),
+            d,
+            0,
+        )
+        yield Bucket(
+            "Pre Jagged Earth (Birb)",
+            pl.Expr.and_(
+                pl.col("Expansion").lt(pl.lit(17)),
+                pl.col("Difficulty").gt(d_min),
+                pl.col("Difficulty").le(d_max),
+                pl.Expr.or_(
+                    pl.col("Spirit_0").eq_missing("Finder of Paths Unseen"),
+                    pl.col("Spirit_1").eq_missing("Finder of Paths Unseen"),
+                    pl.col("Spirit_2").eq_missing("Finder of Paths Unseen"),
+                    pl.col("Spirit_3").eq_missing("Finder of Paths Unseen"),
                 ),
-                d,
-                0,
-            )
-            continue
+            ),
+            d,
+            1,
+        )
+        d_min = d_max
 
+
+def je_buckets(
+    all_games: pl.LazyFrame,
+) -> typing.Iterator[Bucket]:
+    """Find difficulty/complexity ranges to bucket games into."""
+    all_games = all_games.clone().filter()
+    representative_games = all_games.clone().filter(
+        pl.Expr.and_(
+            pl.col("Expansion").eq(pl.lit(63)),
+            # Too many good games for D matchups.
+            pl.Expr.not_(pl.col("Has D")),
+            pl.col("Players").gt(pl.lit(1)),
+            pl.col("Players").le(pl.lit(4)),
+        ),
+    )
+
+    difficulty = (
+        representative_games.clone()
+        .with_columns(
+            pl.col("Difficulty")
+            .qcut(
+                5,
+                labels=[str(label) for label in range(5)],
+                include_breaks=True,
+            )
+            .alias("qcut"),
+        )
+        .unnest("qcut")
+        .select("breakpoint", "category")
+        .unique()
+    ).collect(streaming=True)
+
+    d_min = -99
+    for d_max, d in difficulty.sort("category").rows():
         complexity = (
-            all_games.clone()
+            representative_games.clone()
             .filter(
                 pl.col("Difficulty").gt(d_min),
                 pl.col("Difficulty").le(d_max),
@@ -99,8 +149,8 @@ def _buckets(
             .with_columns(
                 pl.col("Complexity")
                 .qcut(
-                    complexity_count,
-                    labels=[str(label) for label in range(complexity_count)],
+                    3,
+                    labels=[str(label) for label in range(3)],
                     include_breaks=True,
                 )
                 .alias("qcut"),
@@ -113,9 +163,10 @@ def _buckets(
         c_min = -99
         for c_max, c in complexity.sort("category").rows():
             yield Bucket(
-                name,
+                "Jagged Earth+",
                 pl.Expr.and_(
-                    sp_filter,
+                    pl.col("Expansion").ge(pl.lit(17)),
+                    pl.Expr.not_(pl.col("Has D")),
                     pl.col("Difficulty").gt(d_min),
                     pl.col("Difficulty").le(d_max),
                     pl.col("Complexity").gt(c_min),
@@ -126,67 +177,6 @@ def _buckets(
             )
             c_min = c_max
         d_min = d_max
-
-
-def preje_buckets(
-    all_games: pl.LazyFrame,
-) -> list[Bucket]:
-    """Find difficulty/complexity ranges to bucket pre-jagged earth games into."""
-    nonbird = _buckets(
-        "Pre Jagged Earth (No Bird)",
-        all_games,
-        pl.Expr.and_(
-            pl.col("Expansion").lt(pl.lit(17)),
-            pl.col("Expansion").ne(pl.lit(2)),
-            pl.col("Spirit_0").ne_missing("Finder of Paths Unseen"),
-            pl.col("Spirit_1").ne_missing("Finder of Paths Unseen"),
-            pl.col("Spirit_2").ne_missing("Finder of Paths Unseen"),
-            pl.col("Spirit_3").ne_missing("Finder of Paths Unseen"),
-        ),
-        difficulty_count=3,
-        complexity_count=0,
-    )
-
-    bird = [
-        Bucket(b.name, b.expr, b.difficulty, 1)
-        for b in _buckets(
-            "Pre Jagged Earth (Bird Only)",
-            all_games,
-            pl.Expr.and_(
-                pl.col("Expansion").lt(pl.lit(49)),
-                pl.col("Expansion").ne(pl.lit(2)),
-                pl.Expr.or_(
-                    pl.col("Spirit_0").eq_missing("Finder of Paths Unseen"),
-                    pl.col("Spirit_1").eq_missing("Finder of Paths Unseen"),
-                    pl.col("Spirit_2").eq_missing("Finder of Paths Unseen"),
-                    pl.col("Spirit_3").eq_missing("Finder of Paths Unseen"),
-                ),
-            ),
-            difficulty_count=3,
-            complexity_count=0,
-        )
-    ]
-
-    return [*nonbird, *bird]
-
-
-def je_buckets(
-    all_games: pl.LazyFrame,
-) -> list[Bucket]:
-    """Find difficulty/complexity ranges to bucket games into."""
-    return list(
-        _buckets(
-            "Jagged Earth+",
-            all_games,
-            pl.Expr.and_(
-                pl.col("Expansion").ge(pl.lit(17)),
-                # Too many good games for D matchups.
-                pl.Expr.not_(pl.col("Has D")),
-            ),
-            difficulty_count=5,
-            complexity_count=3,
-        ),
-    )
 
 
 def filter_by_bucket(
