@@ -6,9 +6,9 @@ def test_prejebuckets() -> None:
 
     games = pl.DataFrame(
         {
-            "Expansion": [12, 15, 15, 15, 15, 15, 32],
-            "Players": [2, 2, 2, 2, 1, 4, 2],
-            "Difficulty": [60000, 1, 2, 3, 9000, 10000, 50000],
+            "Expansion": [12, 15, 15, 15, 15, 15, 32, 2],
+            "Players": [2, 2, 2, 2, 1, 4, 2, 3],
+            "Difficulty": [60000, 1, 2, 3, 9000, 10000, 50000, 1000],
             "Spirit_0": [
                 "Not Birb",
                 "Not Birb",
@@ -16,6 +16,7 @@ def test_prejebuckets() -> None:
                 "Finder of Paths Unseen",
                 "Not Birb",
                 "Not Birb",
+                "N/A",
                 "N/A",
             ],
             "Spirit_1": [
@@ -26,9 +27,10 @@ def test_prejebuckets() -> None:
                 None,
                 "Not Birb",
                 "N/A",
+                "N/A",
             ],
-            "Spirit_2": ["Finder of Paths Unseen"] + [None] * 6,
-            "Spirit_3": [None] * 7,
+            "Spirit_2": ["Finder of Paths Unseen"] + [None] * 7,
+            "Spirit_3": [None] * 8,
         },
     )
 

@@ -20,6 +20,7 @@ def test_spirits_by_expansion() -> None:
     results = uut(1 | 8, spirits).collect(streaming=True).to_dict(as_series=False)
 
     # filters by expansion
+    assert len(results["Spirit"]) == 4
     assert "S4" not in results["Spirit"]
 
     # converts complexity to something usable

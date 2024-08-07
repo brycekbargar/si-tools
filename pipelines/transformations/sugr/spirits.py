@@ -6,14 +6,10 @@ import polars.selectors as cs
 
 def spirits_by_expansions(expansions: int, spirits: pl.LazyFrame) -> pl.LazyFrame:
     """Filter, and clean Spirit data."""
-    spirits = (
-        spirits.clone()
-        .filter(pl.col("Expansions").or_(expansions).eq_missing(expansions))
-        .drop("Expansions", "Aspect")
-    )
-
     return (
-        spirits.join(
+        spirits.clone()
+        .filter(pl.col("Expansions").or_(expansions).eq(expansions))
+        .join(
             pl.LazyFrame(
                 {
                     # https://discord.com/channels/846580409050857493/846580409050857496/1162666833015488573
@@ -29,7 +25,7 @@ def spirits_by_expansions(expansions: int, spirits: pl.LazyFrame) -> pl.LazyFram
             on="Complexity",
             how="left",
         )
-        .drop("Complexity")
+        .drop("Complexity", "Expansions", "Aspect")
         .rename({"Name": "Spirit", "Value": "Complexity"})
     )
 

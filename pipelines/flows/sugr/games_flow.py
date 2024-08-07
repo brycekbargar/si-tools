@@ -89,6 +89,8 @@ class SugrGamesFlow(FlowSpec):
         import polars as pl
         from utilities.hive_dataset import HiveDataset
 
+        from transformations.sugr.expansions import expansions_and_players
+
         self.adversaries_ds = HiveDataset(
             self.ephemeral.path,
             "adversaries",
@@ -113,10 +115,11 @@ class SugrGamesFlow(FlowSpec):
             Matchup=pl.String,  # type: ignore [argumentType]
         )
 
-        exp = self.input_expansions_ds.read()
-        if self.param_subset:
-            exp = exp.filter(pl.col("Value").is_in([1, 2, 13, 19, 31, 49, 63]))
-        self.expansions = exp.select("Value", "Players").collect(streaming=True).rows()
+        self.expansions = expansions_and_players(
+            self.input_expansions_ds.read(),
+            subset=typing.cast(bool, self.param_subset),
+            max_players=typing.cast(int, self.param_player_limit),
+        )
 
         self.next(self.filter_by_expansion, foreach="expansions")
 
@@ -125,13 +128,9 @@ class SugrGamesFlow(FlowSpec):
         from transformations.sugr.adversaries import adversaries_by_expansions
         from transformations.sugr.spirits import spirits_by_expansions
 
-        (self.expansion, self.max_players) = typing.cast(
-            tuple[int, int],
+        (self.expansion, self.players) = typing.cast(
+            tuple[int, list[int]],
             self.input,
-        )
-        self.max_players = min(
-            self.max_players,
-            typing.cast(int, self.param_player_limit),
         )
 
         (adversaries, self.matchups) = adversaries_by_expansions(
@@ -174,8 +173,7 @@ class SugrGamesFlow(FlowSpec):
 
     @step
     def fanout_players(self) -> None:
-        self.pc = list(range(1, self.max_players + 1))
-        self.next(self.generate_combinations, foreach="pc")
+        self.next(self.generate_combinations, foreach="players")
 
     @step
     def generate_combinations(self) -> None:
@@ -224,53 +222,63 @@ class SugrGamesFlow(FlowSpec):
             inputs,
             include=[*__OUTPUT_ARTIFACTS__, *__DATASETS__],
         )
-        self.next(self.fanout_buckets)
+        self.next(self.branch_gametypes)
 
     @step
-    def fanout_buckets(self) -> None:
+    def branch_gametypes(self) -> None:
+        self.next(self.bucket_horizons, self.bucket_preje)
+
+    @step
+    def bucket_horizons(self) -> None:
+        from transformations.sugr.expansions import horizons
         from transformations.sugr.games import (
             create_games,
+            filter_by_bucket,
             horizons_bucket,
-            je_buckets,
-            preje_buckets,
         )
 
-        games = create_games(
-            self.adversaries_ds.read(),
-            self.combinations_ds.read(low_memory=True),
-        )
-
-        self.buckets = [
-            horizons_bucket(),
-            *preje_buckets(games),
-            *je_buckets(games),
-        ]
-
-        self.next(self.bucket_games, foreach="buckets")
-
-    @step
-    def bucket_games(self) -> None:
-        from transformations.sugr.games import Bucket, create_games, filter_by_bucket
-
-        bucket = typing.cast(Bucket, self.input)
+        bucket = horizons_bucket()
         print(str(bucket))
         self.games_ds.write(
             filter_by_bucket(
                 bucket,
                 create_games(
-                    self.adversaries_ds.read(),
-                    self.combinations_ds.read(low_memory=True),
+                    horizons(self.adversaries_ds.read()),
+                    horizons(self.combinations_ds.read()),
                 ),
             ),
-            allow_empty=True,
             Difficulty=bucket.difficulty,
             Complexity=bucket.complexity,
         )
 
-        self.next(self.collect_buckets)
+        self.next(self.join_gametypes)
 
     @step
-    def collect_buckets(self, inputs: typing.Any) -> None:
+    def bucket_preje(self) -> None:
+        from transformations.sugr.expansions import preje
+        from transformations.sugr.games import (
+            create_games,
+            filter_by_bucket,
+            preje_buckets,
+        )
+
+        games = create_games(
+            preje(self.adversaries_ds.read()),
+            preje(self.combinations_ds.read()),
+        )
+
+        for bucket in preje_buckets(games):
+            print(str(bucket))
+            self.games_ds.write(
+                filter_by_bucket(bucket, games),
+                Difficulty=bucket.difficulty,
+                Complexity=bucket.complexity,
+            )
+
+        self.next(self.join_gametypes)
+
+    @step
+    def join_gametypes(self, inputs: typing.Any) -> None:
         self.merge_artifacts(inputs, include=[*__OUTPUT_ARTIFACTS__, *__DATASETS__])
         self.next(self.end)
 
