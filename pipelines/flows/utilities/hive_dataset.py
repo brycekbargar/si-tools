@@ -41,7 +41,8 @@ class HiveDataset:
 
     def read(
         self,
-        low_memory: bool = False,  # noqa: FBT001, FBT002
+        *,
+        low_memory: bool = False,
         **kwargs: typing.Any,
     ) -> pl.LazyFrame:
         """Creates a view into the dataset as a LazyFrame.
@@ -86,6 +87,8 @@ class HiveDataset:
     def write(
         self,
         frame: pl.LazyFrame,
+        *,
+        allow_empty: bool = False,
         **kwargs: typing.Any,
     ) -> None:
         """Appends data to the dataset using Hive-style partitioning.
@@ -130,6 +133,10 @@ class HiveDataset:
             gc.collect()
 
             if len(parts) == 0:
+                empty = frame.select(pl.len()).collect(streaming=True).item(0, 0) == 0
+                if empty and allow_empty:
+                    return
+
                 msg = f"No unique values were found for keys: {"', '".join(frame_keys)}"
                 raise KeyMismatchError(msg)
         else:

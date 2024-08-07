@@ -49,11 +49,9 @@ def preje_buckets(
 ) -> typing.Iterator[Bucket]:
     """Find difficulty/complexity ranges to bucket pre-jagged earth games into."""
     representative_games = all_games.clone().filter(
-        pl.Expr.and_(
-            pl.col("Expansion").eq(pl.lit(16)),
-            pl.col("Players").gt(pl.lit(1)),
-            pl.col("Players").le(pl.lit(3)),
-        ),
+        pl.col("Expansion").eq(pl.lit(15)),
+        pl.col("Players").gt(pl.lit(1)),
+        pl.col("Players").le(pl.lit(3)),
     )
 
     difficulty = (
@@ -75,9 +73,10 @@ def preje_buckets(
     d_min = -99
     for d_max, d in difficulty.sort("category").rows():
         yield Bucket(
-            "Pre Jagged Earth (Birb)",
+            "Pre Jagged Earth (No Birb)",
             pl.Expr.and_(
                 pl.col("Expansion").lt(pl.lit(17)),
+                pl.col("Expansion").ne(pl.lit(2)),
                 pl.col("Difficulty").gt(d_min),
                 pl.col("Difficulty").le(d_max),
                 pl.col("Spirit_0").ne_missing("Finder of Paths Unseen"),
@@ -85,13 +84,14 @@ def preje_buckets(
                 pl.col("Spirit_2").ne_missing("Finder of Paths Unseen"),
                 pl.col("Spirit_3").ne_missing("Finder of Paths Unseen"),
             ),
-            d,
+            int(d),
             0,
         )
         yield Bucket(
             "Pre Jagged Earth (Birb)",
             pl.Expr.and_(
                 pl.col("Expansion").lt(pl.lit(17)),
+                pl.col("Expansion").ne(pl.lit(2)),
                 pl.col("Difficulty").gt(d_min),
                 pl.col("Difficulty").le(d_max),
                 pl.Expr.or_(
@@ -101,7 +101,7 @@ def preje_buckets(
                     pl.col("Spirit_3").eq_missing("Finder of Paths Unseen"),
                 ),
             ),
-            d,
+            int(d),
             1,
         )
         d_min = d_max
@@ -111,15 +111,12 @@ def je_buckets(
     all_games: pl.LazyFrame,
 ) -> typing.Iterator[Bucket]:
     """Find difficulty/complexity ranges to bucket games into."""
-    all_games = all_games.clone().filter()
     representative_games = all_games.clone().filter(
-        pl.Expr.and_(
-            pl.col("Expansion").eq(pl.lit(63)),
-            # Too many good games for D matchups.
-            pl.Expr.not_(pl.col("Has D")),
-            pl.col("Players").gt(pl.lit(1)),
-            pl.col("Players").le(pl.lit(4)),
-        ),
+        pl.col("Expansion").eq(pl.lit(63)),
+        # Too many good games for D matchups.
+        pl.Expr.not_(pl.col("Has D")),
+        pl.col("Players").gt(pl.lit(1)),
+        pl.col("Players").le(pl.lit(4)),
     )
 
     difficulty = (
@@ -172,8 +169,8 @@ def je_buckets(
                     pl.col("Complexity").gt(c_min),
                     pl.col("Complexity").le(c_max),
                 ),
-                d,
-                c,
+                int(d),
+                int(c),
             )
             c_min = c_max
         d_min = d_max

@@ -262,6 +262,7 @@ class SugrGamesFlow(FlowSpec):
                     self.combinations_ds.read(low_memory=True),
                 ),
             ),
+            allow_empty=True,
             Difficulty=bucket.difficulty,
             Complexity=bucket.complexity,
         )
