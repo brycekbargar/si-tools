@@ -12,11 +12,11 @@ def expansions_and_players(
     """Collects the unique expansions and their player counts."""
     if subset:
         expansions = expansions.clone().filter(
-            pl.col("Value").is_in([1, 2, 15, 19, 31, 49, 63]),
+            pl.col("Expansion").is_in([1, 2, 15, 19, 31, 49, 63]),
         )
 
     values: list[tuple[int, int]] = (
-        expansions.select("Value", "Players").collect(streaming=True).rows()
+        expansions.select("Expansion", "Players").collect(streaming=True).rows()
     )
 
     return [(exp, list(range(1, min(p, max_players) + 1))) for (exp, p) in values]
@@ -43,6 +43,4 @@ def jaggedearth(
     frame: pl.LazyFrame,
 ) -> pl.LazyFrame:
     """Filters the frame to expansions post Jagged Earth."""
-    return frame.clone().filter(
-        pl.col("Expansion").ge(pl.lit(17)),
-    )
+    return frame.clone().filter(pl.col("Expansion").ge(pl.lit(17)))

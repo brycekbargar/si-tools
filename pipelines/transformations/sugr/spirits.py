@@ -8,7 +8,7 @@ def spirits_by_expansions(expansions: int, spirits: pl.LazyFrame) -> pl.LazyFram
     """Filter, and clean Spirit data."""
     return (
         spirits.clone()
-        .filter(pl.col("Expansions").or_(expansions).eq(expansions))
+        .filter(pl.col("Expansion").or_(expansions).eq_missing(expansions))
         .join(
             pl.LazyFrame(
                 {
@@ -25,7 +25,7 @@ def spirits_by_expansions(expansions: int, spirits: pl.LazyFrame) -> pl.LazyFram
             on="Complexity",
             how="left",
         )
-        .drop("Complexity", "Expansions", "Aspect")
+        .drop("Complexity", "Expansion", "Aspect")
         .rename({"Name": "Spirit", "Value": "Complexity"})
     )
 

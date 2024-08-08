@@ -9,6 +9,8 @@ import polars as pl
 def create_games(
     adversaries: pl.LazyFrame,
     combos: pl.LazyFrame,
+    *,
+    use_expansion: bool = True,
 ) -> pl.LazyFrame:
     """Creates games from adversaries/spirits based on matchups."""
     return (
@@ -16,13 +18,13 @@ def create_games(
         .cast({"Matchup": _all_matchups})
         .join(
             combos.clone().cast({"Matchup": _all_matchups}),
-            on=["Expansion", "Matchup"],
+            on=["Expansion", "Matchup"] if use_expansion else "Matchup",
         )
         .with_columns(
             pl.col("Difficulty").mul(pl.col("Difficulty_right")),
             pl.col("Complexity").add(pl.col("Complexity_right")),
         )
-        .drop("Matchup")
+        .drop("Matchup", "Difficulty_right", "Complexity_right")
     )
 
 
@@ -46,7 +48,7 @@ def horizons_bucket() -> Bucket:
 
 def preje_buckets(
     all_games: pl.LazyFrame,
-) -> typing.Iterator[Bucket]:
+) -> list[Bucket]:
     """Find difficulty/complexity ranges to bucket pre-jagged earth games into."""
     representative_games = all_games.clone().filter(
         pl.col("Expansion").eq(pl.lit(15)),
@@ -70,46 +72,45 @@ def preje_buckets(
         .unique()
     ).collect(streaming=True)
 
-    d_min = -99
-    for d_max, d in difficulty.sort("category").rows():
-        yield Bucket(
-            "Pre Jagged Earth (No Birb)",
-            pl.Expr.and_(
-                pl.col("Expansion").lt(pl.lit(17)),
-                pl.col("Expansion").ne(pl.lit(2)),
-                pl.col("Difficulty").gt(d_min),
-                pl.col("Difficulty").le(d_max),
-                pl.col("Spirit_0").ne_missing("Finder of Paths Unseen"),
-                pl.col("Spirit_1").ne_missing("Finder of Paths Unseen"),
-                pl.col("Spirit_2").ne_missing("Finder of Paths Unseen"),
-                pl.col("Spirit_3").ne_missing("Finder of Paths Unseen"),
-            ),
-            int(d),
-            0,
-        )
-        yield Bucket(
-            "Pre Jagged Earth (Birb)",
-            pl.Expr.and_(
-                pl.col("Expansion").lt(pl.lit(17)),
-                pl.col("Expansion").ne(pl.lit(2)),
-                pl.col("Difficulty").gt(d_min),
-                pl.col("Difficulty").le(d_max),
-                pl.Expr.or_(
-                    pl.col("Spirit_0").eq_missing("Finder of Paths Unseen"),
-                    pl.col("Spirit_1").eq_missing("Finder of Paths Unseen"),
-                    pl.col("Spirit_2").eq_missing("Finder of Paths Unseen"),
-                    pl.col("Spirit_3").eq_missing("Finder of Paths Unseen"),
+    def _buckets() -> typing.Iterator[Bucket]:
+        d_min = -99
+        for d_max, d in difficulty.sort("category").rows():
+            yield Bucket(
+                "Pre Jagged Earth (No Birb)",
+                pl.Expr.and_(
+                    pl.col("Difficulty").gt(d_min),
+                    pl.col("Difficulty").le(d_max),
+                    pl.col("Spirit_0").ne_missing("Finder of Paths Unseen"),
+                    pl.col("Spirit_1").ne_missing("Finder of Paths Unseen"),
+                    pl.col("Spirit_2").ne_missing("Finder of Paths Unseen"),
+                    pl.col("Spirit_3").ne_missing("Finder of Paths Unseen"),
                 ),
-            ),
-            int(d),
-            1,
-        )
-        d_min = d_max
+                int(d),
+                0,
+            )
+            yield Bucket(
+                "Pre Jagged Earth (Birb)",
+                pl.Expr.and_(
+                    pl.col("Difficulty").gt(d_min),
+                    pl.col("Difficulty").le(d_max),
+                    pl.Expr.or_(
+                        pl.col("Spirit_0").eq_missing("Finder of Paths Unseen"),
+                        pl.col("Spirit_1").eq_missing("Finder of Paths Unseen"),
+                        pl.col("Spirit_2").eq_missing("Finder of Paths Unseen"),
+                        pl.col("Spirit_3").eq_missing("Finder of Paths Unseen"),
+                    ),
+                ),
+                int(d),
+                1,
+            )
+            d_min = d_max
+
+    return list(_buckets())
 
 
 def je_buckets(
     all_games: pl.LazyFrame,
-) -> typing.Iterator[Bucket]:
+) -> list[Bucket]:
     """Find difficulty/complexity ranges to bucket games into."""
     representative_games = all_games.clone().filter(
         pl.col("Expansion").eq(pl.lit(63)),
@@ -135,45 +136,51 @@ def je_buckets(
         .unique()
     ).collect(streaming=True)
 
-    d_min = -99
-    for d_max, d in difficulty.sort("category").rows():
-        complexity = (
-            representative_games.clone()
-            .filter(
-                pl.col("Difficulty").gt(d_min),
-                pl.col("Difficulty").le(d_max),
-            )
-            .with_columns(
-                pl.col("Complexity")
-                .qcut(
-                    3,
-                    labels=[str(label) for label in range(3)],
-                    include_breaks=True,
-                )
-                .alias("qcut"),
-            )
-            .unnest("qcut")
-            .select("breakpoint", "category")
-            .unique()
-        ).collect(streaming=True)
-
-        c_min = -99
-        for c_max, c in complexity.sort("category").rows():
-            yield Bucket(
-                "Jagged Earth+",
-                pl.Expr.and_(
-                    pl.col("Expansion").ge(pl.lit(17)),
-                    pl.Expr.not_(pl.col("Has D")),
+    def _buckets() -> typing.Iterator[Bucket]:
+        d_min = -99
+        for d_max, d in difficulty.sort("category").rows():
+            complexity = (
+                representative_games.clone()
+                .filter(
                     pl.col("Difficulty").gt(d_min),
                     pl.col("Difficulty").le(d_max),
-                    pl.col("Complexity").gt(c_min),
-                    pl.col("Complexity").le(c_max),
-                ),
-                int(d),
-                int(c),
-            )
-            c_min = c_max
-        d_min = d_max
+                )
+                .with_columns(
+                    pl.col("Complexity")
+                    .qcut(
+                        4,
+                        labels=[str(label) for label in range(4)],
+                        include_breaks=True,
+                    )
+                    .alias("qcut"),
+                )
+                .unnest("qcut")
+                .select("breakpoint", "category")
+                .unique()
+            ).collect(streaming=True)
+
+            c_min = -99
+            for c_max, c in complexity.sort("category").rows():
+                # Buckets are 0:0, 1:(1 + 2), 2:3
+                if c == 1:
+                    continue
+
+                yield Bucket(
+                    "Jagged Earth+",
+                    pl.Expr.and_(
+                        pl.Expr.not_(pl.col("Has D")),
+                        pl.col("Difficulty").gt(d_min),
+                        pl.col("Difficulty").le(d_max),
+                        pl.col("Complexity").gt(c_min),
+                        pl.col("Complexity").le(c_max),
+                    ),
+                    int(d),
+                    int(c - 1 if c >= 2 else 0),
+                )
+                c_min = c_max
+            d_min = d_max
+
+    return list(_buckets())
 
 
 def filter_by_bucket(

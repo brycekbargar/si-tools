@@ -226,7 +226,7 @@ class SugrGamesFlow(FlowSpec):
 
     @step
     def branch_gametypes(self) -> None:
-        self.next(self.bucket_horizons, self.bucket_preje)
+        self.next(self.bucket_horizons, self.bucket_preje, self.fanout_je)
 
     @step
     def bucket_horizons(self) -> None:
@@ -275,6 +275,74 @@ class SugrGamesFlow(FlowSpec):
                 Complexity=bucket.complexity,
             )
 
+        self.next(self.join_gametypes)
+
+    @step
+    def fanout_je(self) -> None:
+        from transformations.sugr.expansions import expansions_and_players, jaggedearth
+        from transformations.sugr.games import (
+            create_games,
+            je_buckets,
+        )
+
+        expansions = expansions_and_players(
+            jaggedearth(self.input_expansions_ds.read()),
+            subset=typing.cast(bool, self.param_subset),
+            max_players=typing.cast(int, self.param_player_limit),
+        )
+
+        buckets = je_buckets(
+            create_games(
+                jaggedearth(self.adversaries_ds.read()),
+                jaggedearth(self.combinations_ds.read()),
+            ),
+        )
+
+        self.jaggedearth = [
+            (exp, pc, b)
+            for (exp, players) in expansions
+            if exp >= 17
+            for pc in players
+            for b in buckets
+        ]
+
+        self.next(self.bucket_je, foreach="jaggedearth")
+
+    @step
+    def bucket_je(self) -> None:
+        from transformations.sugr.games import (
+            Bucket,
+            create_games,
+            filter_by_bucket,
+        )
+
+        (expansion, players, bucket) = typing.cast(tuple[int, int, Bucket], self.input)
+
+        print(expansion, players, str(bucket))
+        self.games_ds.write(
+            filter_by_bucket(
+                bucket,
+                create_games(
+                    self.adversaries_ds.read(Expansion=expansion),
+                    self.combinations_ds.read(
+                        Expansion=expansion,
+                        Players=players,
+                        low_memory=True,
+                    ),
+                    use_expansion=False,
+                ),
+            ),
+            Expansion=expansion,
+            Players=players,
+            Difficulty=bucket.difficulty,
+            Complexity=bucket.complexity,
+        )
+
+        self.next(self.collect_jaggedearth)
+
+    @step
+    def collect_jaggedearth(self, inputs: typing.Any) -> None:
+        self.merge_artifacts(inputs, include=[*__OUTPUT_ARTIFACTS__, *__DATASETS__])
         self.next(self.join_gametypes)
 
     @step

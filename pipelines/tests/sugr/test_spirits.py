@@ -12,7 +12,7 @@ def test_spirits_by_expansion() -> None:
         {
             "Name": ["S1", "S2", "S2", "S3", "S3", "S4"],
             "Aspect": [None, None, "2A1", None, "3A1", None],
-            "Expansions": [1, 1, 4, 1, 8, 16],
+            "Expansion": [1, 1, 4, 1, 8, 16],
             "Complexity": ["Moderate"] * 6,
         },
     )
