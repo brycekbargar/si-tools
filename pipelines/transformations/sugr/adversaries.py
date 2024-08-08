@@ -82,7 +82,7 @@ def adversaries_by_expansions(
             pl.LazyFrame(
                 {
                     "Complexity": ["Intro", "Low", "Moderate", "High", "Very High"],
-                    "Value": [0, 1, 3, 6, 127],
+                    "Value": [0, 1, 3, 6, 42],
                 },
                 schema={
                     "Complexity": pl.String,

@@ -22,7 +22,7 @@ def create_games(
         )
         .with_columns(
             pl.col("Difficulty").mul(pl.col("Difficulty_right")),
-            pl.col("Complexity").add(pl.col("Complexity_right")),
+            pl.col("Complexity").mul(pl.lit(1.2)).add(pl.col("Complexity_right")),
         )
         .drop("Matchup", "Difficulty_right", "Complexity_right")
     )
@@ -120,49 +120,47 @@ def je_buckets(
         pl.col("Players").le(pl.lit(4)),
     )
 
-    difficulty = (
-        representative_games.clone()
-        .with_columns(
-            pl.col("Difficulty")
-            .qcut(
-                5,
-                labels=[str(label) for label in range(5)],
-                include_breaks=True,
+    (difficulty, complexity) = pl.collect_all(
+        [
+            representative_games.clone()
+            .with_columns(
+                pl.col("Difficulty")
+                .qcut(
+                    5,
+                    labels=[str(label) for label in range(5)],
+                    include_breaks=True,
+                )
+                .alias("qcut"),
             )
-            .alias("qcut"),
-        )
-        .unnest("qcut")
-        .select("breakpoint", "category")
-        .unique()
-    ).collect(streaming=True)
+            .unnest("qcut")
+            .select("breakpoint", "category")
+            .cast({"category": pl.UInt8})
+            .unique(),
+            representative_games.clone()
+            .with_columns(
+                pl.col("Complexity")
+                .qcut(
+                    5,
+                    labels=[str(label) for label in range(5)],
+                    include_breaks=True,
+                )
+                .alias("qcut"),
+            )
+            .unnest("qcut")
+            .select("breakpoint", "category")
+            .cast({"category": pl.UInt8})
+            .unique(),
+        ],
+        streaming=True,
+    )
 
     def _buckets() -> typing.Iterator[Bucket]:
         d_min = -99
         for d_max, d in difficulty.sort("category").rows():
-            complexity = (
-                representative_games.clone()
-                .filter(
-                    pl.col("Difficulty").gt(d_min),
-                    pl.col("Difficulty").le(d_max),
-                )
-                .with_columns(
-                    pl.col("Complexity")
-                    .qcut(
-                        4,
-                        labels=[str(label) for label in range(4)],
-                        include_breaks=True,
-                    )
-                    .alias("qcut"),
-                )
-                .unnest("qcut")
-                .select("breakpoint", "category")
-                .unique()
-            ).collect(streaming=True)
-
             c_min = -99
             for c_max, c in complexity.sort("category").rows():
-                # Buckets are 0:0, 1:(1 + 2), 2:3
-                if c == 1:
+                # Buckets are 0:0, 1:(1 + 2 + 3), 2:4
+                if c in [1, 2]:
                     continue
 
                 yield Bucket(
@@ -174,8 +172,8 @@ def je_buckets(
                         pl.col("Complexity").gt(c_min),
                         pl.col("Complexity").le(c_max),
                     ),
-                    int(d),
-                    int(c - 1 if c >= 2 else 0),
+                    d,
+                    c - 2 if c >= 3 else 0,
                 )
                 c_min = c_max
             d_min = d_max

@@ -15,7 +15,8 @@ def spirits_by_expansions(expansions: int, spirits: pl.LazyFrame) -> pl.LazyFram
                     # https://discord.com/channels/846580409050857493/846580409050857496/1162666833015488573
                     "Complexity": ["Intro", "Low", "Moderate", "High", "Very High"],
                     # Fractured and Finder should always be in the highest bucket.
-                    "Value": [0, 1, 3, 6, 127],
+                    # 42 is low enough it doesn't overflow (255 / 6)
+                    "Value": [0, 1, 3, 6, 42],
                 },
                 schema={
                     "Complexity": pl.String,
@@ -36,7 +37,7 @@ def calculate_matchups(matchup: str, spirits: pl.LazyFrame) -> pl.LazyFrame:
         matchup_values = pl.LazyFrame(
             {
                 "Tier": ["X", "S", "A", "B", "C", "D", "F"],
-                "Difficulty": [0.7, 0.8, 0.9, 0.0, 1.1, 1.2, 1.3],
+                "Difficulty": [0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3],
                 "Has D": [False] * 7,
             },
             schema={
@@ -49,7 +50,7 @@ def calculate_matchups(matchup: str, spirits: pl.LazyFrame) -> pl.LazyFrame:
         matchup_values = pl.LazyFrame(
             {
                 matchup: ["S", "A", "B", "C", "D"],
-                "Difficulty": [0.8, 0.9, 0.0, 1.15, 1.3],
+                "Difficulty": [0.8, 0.9, 1.0, 1.15, 1.3],
                 "Has D": [False, False, False, False, True],
             },
             schema={

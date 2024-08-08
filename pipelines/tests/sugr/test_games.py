@@ -2,6 +2,7 @@ import polars as pl
 
 
 def test_prejebuckets() -> None:
+    from transformations.sugr.expansions import preje
     from transformations.sugr.games import preje_buckets as uut
 
     games = pl.DataFrame(
@@ -41,15 +42,16 @@ def test_prejebuckets() -> None:
     (zero_nobirb,) = (
         b.expr for b in buckets if b.difficulty == 0 and b.complexity == 0
     )
-    assert games.filter(zero_birb).height == 0
-    assert games.filter(zero_nobirb).height == 1
+    pjeg = preje(games.lazy()).collect()
+    assert pjeg.filter(zero_birb).height == 0
+    assert pjeg.filter(zero_nobirb).height == 1
 
     (one_birb,) = (b.expr for b in buckets if b.difficulty == 1 and b.complexity == 1)
     (one_nobirb,) = (b.expr for b in buckets if b.difficulty == 1 and b.complexity == 0)
-    assert games.filter(one_birb).height == 1
-    assert games.filter(one_nobirb).height == 0
+    assert pjeg.filter(one_birb).height == 1
+    assert pjeg.filter(one_nobirb).height == 0
 
     (two_birb,) = (b.expr for b in buckets if b.difficulty == 2 and b.complexity == 1)
     (two_nobirb,) = (b.expr for b in buckets if b.difficulty == 2 and b.complexity == 0)
-    assert games.filter(two_birb).height == 2
-    assert games.filter(two_nobirb).height == 2
+    assert pjeg.filter(two_birb).height == 2
+    assert pjeg.filter(two_nobirb).height == 2
