@@ -69,6 +69,7 @@ class SiteSugrFlow(FlowSpec):
         from transformations.site.package import batch, drop_nulls, sample
 
         partition = typing.cast(dict[str, typing.Any], self.input)
+        print(partition)
         path = (
             self.output
             / "islands"
@@ -78,7 +79,7 @@ class SiteSugrFlow(FlowSpec):
 
         end = 0
         for (start, e), part in batch(
-            drop_nulls(sample(self.islands_ds.read(**partition))),
+            sample(drop_nulls(self.islands_ds.read(**partition))),
         ):
             pf.write_feather(
                 part.collect(streaming=True).to_arrow(),
@@ -87,7 +88,7 @@ class SiteSugrFlow(FlowSpec):
             )
             end = e
 
-        print("[Island Partition] ", partition, f": {end} total rows")
+        print(partition, f": {end} total rows")
 
         self.next(self.collect_islands)
 
@@ -110,6 +111,7 @@ class SiteSugrFlow(FlowSpec):
         from transformations.site.package import batch, drop_nulls, sample
 
         partition = typing.cast(dict[str, typing.Any], self.input)
+        print(partition)
         path = (
             self.output / "games" / Path(*[f"{k}={v}" for (k, v) in partition.items()])
         )
@@ -117,7 +119,7 @@ class SiteSugrFlow(FlowSpec):
 
         end = 0
         for (start, e), part in batch(
-            drop_nulls(sample(self.games_ds.read(**partition))),
+            sample(drop_nulls(self.games_ds.read(low_memory=True, **partition))),
         ):
             pf.write_feather(
                 part.collect(streaming=True).to_arrow(),
@@ -126,8 +128,7 @@ class SiteSugrFlow(FlowSpec):
             )
             end = e
 
-        print("[Games Partition] ", partition, f": {end} total rows")
-
+        print(partition, f": {end} total rows")
         self.next(self.collect_games)
 
     @step
