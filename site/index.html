@@ -42,24 +42,24 @@
       </select>
       <div class="row">
         <div class="column">
-          <button class="button" data-difficulty="1" data-complexity="0">
+          <button class="button" data-difficulty="1" data-complexity="2">
             Fun
           </button>
         </div>
         <div class="column">
-          <button class="button" data-difficulty="1" data-complexity="1">
+          <button class="button" data-difficulty="2" data-complexity="2">
             Weird
           </button>
         </div>
         <div class="column">
-          <button class="button" data-difficulty="1" data-complexity="2">
+          <button class="button" data-difficulty="3" data-complexity="2">
             Brain-Melting
           </button>
         </div>
       </div>
       <div class="row">
         <div class="column">
-          <button class="button" data-difficulty="2" data-complexity="0">
+          <button class="button" data-difficulty="1" data-complexity="1">
             Easy
           </button>
         </div>
@@ -69,24 +69,24 @@
           </button>
         </div>
         <div class="column">
-          <button class="button" data-difficulty="2" data-complexity="2">
+          <button class="button" data-difficulty="3" data-complexity="1">
             Hard
           </button>
         </div>
       </div>
       <div class="row">
         <div class="column">
-          <button class="button" data-difficulty="3" data-complexity="0">
+          <button class="button" data-difficulty="1" data-complexity="0">
             Quick
           </button>
         </div>
         <div class="column">
-          <button class="button" data-difficulty="3" data-complexity="1">
+          <button class="button" data-difficulty="2" data-complexity="0">
             Straightforward
           </button>
         </div>
         <div class="column">
-          <button class="button" data-difficulty="3" data-complexity="2">
+          <button class="button" data-difficulty="3" data-complexity="0">
             Punishing
           </button>
         </div>
@@ -113,7 +113,7 @@
 
         const games = (sugr.games = await Arrow.tableFromIPC(
           fetch(
-            `data/games/Expansion=31/Players=${players}/Difficulty=${difficulty}/Complexity=${complexity}/0.feather`,
+            `data/games/Expansion=63/Players=${players}/Difficulty=${difficulty}/Complexity=${complexity}/0.feather`,
           ),
         ));
         const randomGame = Math.floor(Math.random() * games.numRows);
