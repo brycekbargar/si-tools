@@ -66,7 +66,7 @@ class SiteSugrFlow(FlowSpec):
 
         import pyarrow.feather as pf
 
-        from transformations.site.package import batch, drop_nulls
+        from transformations.site.package import batch, drop_nulls, sample
 
         partition = typing.cast(dict[str, typing.Any], self.input)
         path = (
@@ -77,7 +77,9 @@ class SiteSugrFlow(FlowSpec):
         path.mkdir(mode=0o755, parents=True, exist_ok=True)
 
         end = 0
-        for (start, e), part in batch(drop_nulls(self.islands_ds.read(**partition))):
+        for (start, e), part in batch(
+            drop_nulls(sample(self.islands_ds.read(**partition))),
+        ):
             pf.write_feather(
                 part.collect(streaming=True).to_arrow(),
                 path / f"{start}.feather",
@@ -105,7 +107,7 @@ class SiteSugrFlow(FlowSpec):
 
         import pyarrow.feather as pf
 
-        from transformations.site.package import batch, drop_nulls
+        from transformations.site.package import batch, drop_nulls, sample
 
         partition = typing.cast(dict[str, typing.Any], self.input)
         path = (
@@ -114,7 +116,9 @@ class SiteSugrFlow(FlowSpec):
         path.mkdir(mode=0o755, parents=True, exist_ok=True)
 
         end = 0
-        for (start, e), part in batch(drop_nulls(self.games_ds.read(**partition))):
+        for (start, e), part in batch(
+            drop_nulls(sample(self.games_ds.read(**partition))),
+        ):
             pf.write_feather(
                 part.collect(streaming=True).to_arrow(),
                 path / f"{start}.feather",

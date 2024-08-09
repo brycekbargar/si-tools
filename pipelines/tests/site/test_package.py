@@ -37,3 +37,22 @@ def test_batch() -> None:
             assert e == 100
 
     assert batches == [0, 15, 30, 45, 60, 75, 90]
+
+
+def test_sample() -> None:
+    from transformations.site.package import sample as uut
+
+    frame = pl.LazyFrame(
+        [*range(100)],
+        schema="a",
+        orient="row",
+    )
+
+    for i in range(101):
+        result = uut(frame, i)
+
+        actual = result.select(pl.len()).collect().item(0, 0)
+        assert actual == i
+
+        unique = result.unique().select(pl.len()).collect().item(0, 0)
+        assert unique == actual == i
