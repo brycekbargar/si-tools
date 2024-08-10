@@ -119,13 +119,46 @@
         const randomGame = Math.floor(Math.random() * games.numRows);
         game = games.get(randomGame);
 
+        const adversaries = (sugr.adversaries = await Arrow.tableFromIPC(
+          fetch(`data/adversaries.feather`),
+        ));
+        const [baseDifficulty, matchup] = adversaries
+          .toArray()
+          .map((r) => r.toJSON())
+          .filter((r) => r.Name == game.Adversary && r.Level == game.Level)
+          .map((r) => [r.Difficulty, r.Matchup])[0];
         document.getElementById("adversary").innerHTML =
-          `${game["Adversary"]} Level ${game["Level"]}`;
+          `${game.Adversary} Level ${game.Level} (Base Difficulty ${baseDifficulty})`;
+
+        const spirits = (sugr.spirits = await Arrow.tableFromIPC(
+          fetch(`data/spirits.feather`),
+        ));
         document.getElementById("spirits").innerHTML = "";
         for (let i = 0; i < players; i++) {
-          const spirit = document.createElement("li");
-          spirit.innerHTML = game[`Spirit_${i}`];
-          document.getElementById("spirits").appendChild(spirit);
+          spirit = game[`Spirit_${i}`];
+          const ratings = spirits
+            .toArray()
+            .map((r) => r.toJSON())
+            .filter((r) => r.Name == spirit)
+            .reduce((p, c) => {
+              p[c.Aspect ?? "Base"] = c[matchup];
+              return p;
+            }, {});
+
+          const spirit_li = document.createElement("li");
+          if (Object.keys(ratings).length == 1) {
+            spirit_li.innerHTML = `${spirit} (${ratings.Base})`;
+          } else {
+            spirit_li.innerHTML = spirit;
+            const aspects_ul = document.createElement("ul");
+            Object.keys(ratings).forEach((aspect) => {
+              const li = document.createElement("li");
+              li.innerHTML = `${aspect} (${ratings[aspect]})`;
+              aspects_ul.appendChild(li);
+            });
+            spirit_li.appendChild(aspects_ul);
+          }
+          document.getElementById("spirits").appendChild(spirit_li);
         }
 
         const islands = (sugr.islands = await Arrow.tableFromIPC(

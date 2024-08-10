@@ -29,10 +29,8 @@ class SiteSugrFlow(FlowSpec):
         )
 
         self.output = Path(typing.cast(str, self.param_output))
-        if (io := self.output / "islands").exists():
-            shutil.rmtree(io)
-        if (go := self.output / "games").exists():
-            shutil.rmtree(go)
+        if self.output.exists():
+            shutil.rmtree(self.output)
 
         self.ephemeral = temp.push_segment("ephemeral")
         os.environ["POLARS_TEMP_DIR"] = str(
@@ -40,6 +38,26 @@ class SiteSugrFlow(FlowSpec):
                 "polars",
             ),
         )
+
+        self.next(self.copy_inputs)
+
+    @step
+    def copy_inputs(self) -> None:
+        import pyarrow.feather as pf
+
+        if typing.TYPE_CHECKING:
+            from utilities.hive_dataset import HiveDataset
+
+        for infile in ["spirits", "adversaries"]:
+            ds: HiveDataset = getattr(
+                current.trigger["SugrIslandsFlow"].data,  # pyright: ignore [reportAttributeAccessIssue]
+                f"input_{infile}_ds",
+            )
+            pf.write_feather(
+                ds.read().collect(streaming=True).to_arrow(),
+                self.output / f"{infile}.feather",
+                compression="uncompressed",
+            )
 
         self.next(self.branch_flowtypes)
 
@@ -51,7 +69,9 @@ class SiteSugrFlow(FlowSpec):
         self.islands_ds: HiveDataset = current.trigger[  # pyright: ignore [reportAttributeAccessIssue]
             "SugrIslandsFlow"
         ].data.islands_ds
-        self.games_ds: HiveDataset = current.trigger["SugrGamesFlow"].data.games_ds  # pyright: ignore [reportAttributeAccessIssue]
+        self.games_ds: HiveDataset = current.trigger[  # pyright: ignore [reportAttributeAccessIssue]
+            "SugrGamesFlow"
+        ].data.games_ds
 
         self.next(self.fanout_islands, self.fanout_games)
 
